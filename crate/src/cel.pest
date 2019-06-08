@@ -1,0 +1,26 @@
+Expression = { SOI ~ Relation ~ EOI }
+Relation = { Addition ~ (RelOp ~ Addition)? }
+RelOp = { "==" | "!=" | "<" | "<=" | ">" | ">=" }
+Addition = { Multiplication ~ (AddOp ~ Multiplication)* }
+AddOp = { "+" | "-" }
+Multiplication = { Unary ~ (MulOp ~ Unary)* }
+MulOp = { "*" | "/" }
+Unary = { Literal | LPAREN ~ Relation ~ RPAREN | UnaryOp ~ Unary }
+UnaryOp = { "-" | "!" }
+LPAREN = _{ "(" }
+RPAREN = _{ ")" }
+Literal = { BoolLiteral | BytesLiteral | FloatLiteral | IntLiteral | ListLiteral | NullLiteral | StringLiteral }
+StringLiteral = ${ PUSH(OPEN_STR) ~ (CharLiteral | Escape)* ~ POP }
+BytesLiteral = ${ "b" ~ PUSH(OPEN_STR) ~ (CharLiteral | Escape)* ~ POP }
+OPEN_STR = _{ "\"" | "'" }
+CharLiteral = { !("\\" | OPEN_STR) ~ ANY }
+Escape = @{ "\\" ~ ("\"" | "n" | "t" | OctalSequence | HexSequence | UnicodeSequence ) }
+OctalSequence = @{ ('0' .. '3') ~ ASCII_OCT_DIGIT{2} }
+HexSequence = @{ "x" ~ ASCII_HEX_DIGIT{2} }
+UnicodeSequence = @{ "u" ~ ASCII_HEX_DIGIT{4} }
+FloatLiteral = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+IntLiteral = @{ ASCII_DIGIT+ }
+ListLiteral = { "[" ~ Addition ~ ("," ~ Addition)* ~ "]" }
+BoolLiteral = @{ "false" | "true" }
+NullLiteral = @{ "null" }
+WHITESPACE = _{ " " | "\n" }
