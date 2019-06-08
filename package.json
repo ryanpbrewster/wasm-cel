@@ -1,9 +1,9 @@
 {
-  "author": "Nick Fitzgerald <nfitzgerald@mozilla.com>",
-  "name": "create-rust-webpack",
-  "version": "0.1.5",
-  "repository": "https://github.com/rustwasm/rust-webpack-template",
-  "license": "Apache-2.0/MIT",
+  "author": "Ryan Brewster",
+  "name": "wasm-cel",
+  "version": "0.1.0",
+  "repository": "https://github.com/ryanpbrewster/wasm-cel",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "webpack-dev-server -d",
     "build": "webpack"

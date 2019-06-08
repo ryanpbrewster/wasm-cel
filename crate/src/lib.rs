@@ -28,19 +28,8 @@ cfg_if! {
 }
 
 #[wasm_bindgen]
-pub fn collatz_len_wasm(n: u32) -> usize {
-    let mut n = n as u64;
-    let mut count = 0;
-    while n > 1 {
-        n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
-        count += 1;
-    }
-    count
-}
-
-#[wasm_bindgen]
-pub fn collatz_max_wasm(hi: u32) -> u32 {
-  (1..=hi).max_by_key(|&n| collatz_len_wasm(n)).unwrap()
+pub fn tokens(input: String) -> String {
+  format!("Hola from {}", input)
 }
 
 #[cfg(test)]
@@ -48,17 +37,6 @@ mod test {
     use super::*;
 
     #[test]
-    fn len_smoke() {
-        assert_eq!(collatz_len(1), 0);
-        assert_eq!(collatz_len(2), 1);
-        assert_eq!(collatz_len(3), 7);
-        assert_eq!(collatz_len(4), 2);
-        assert_eq!(collatz_len(5), 5);
-    }
-
-    #[test]
-    fn max_smoke() {
-        assert_eq!(collatz_max_wasm(1_000), 871);
-        assert_eq!(collatz_max_wasm(1_000_000), 837799);
+    fn smoke() {
     }
 }
