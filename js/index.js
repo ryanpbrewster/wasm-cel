@@ -18,7 +18,7 @@ window.onload = function() {
         evt.preventDefault();
         const input = dom.input.value;
         const output = module.parse_to_ast(input);
-        dom.output.textContent = output;
+        dom.output.textContent = JSON.stringify(output, null, 2);
       }
     });
   });
