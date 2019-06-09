@@ -9,10 +9,16 @@ window.onload = function() {
   import("../crate/pkg").then(module => {
     console.log("loaded module");
     dom.input.addEventListener("keypress", (evt) => {
-      if (evt.keyCode === KEY_CODE_ENTER) {
+      if (evt.keyCode !== KEY_CODE_ENTER) {
+        return;
+      }
+      if (evt.shiftKey) {
+        dom.input.style.height = `${dom.input.scrollHeight}px`;
+      } else {
+        evt.preventDefault();
         const input = dom.input.value;
-        const output = module.tokens(input);
-        dom.output.value = output;
+        const output = module.parse_to_ast(input);
+        dom.output.textContent = output;
       }
     });
   });
