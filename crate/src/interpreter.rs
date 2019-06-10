@@ -8,26 +8,22 @@ pub struct EvalContext {
     bindings: HashMap<Identifier, Value>,
 }
 
-fn evaluate(expr: Expression) -> EvalResult {
-    EvalContext::default().evaluate(expr)
-}
-
 impl EvalContext {
     pub fn evaluate(&self, expr: Expression) -> EvalResult {
         match expr {
             Expression::Lit(lit) => self.evaluate_literal(lit),
-            Expression::Neg(e) => match evaluate(*e)? {
+            Expression::Neg(e) => match self.evaluate(*e)? {
                 Value::I64(x) => Ok(Value::I64(-x)),
                 Value::F64(x) => Ok(Value::F64(-x)),
                 _ => Err(String::from("invalid types")),
             },
-            Expression::Not(e) => match evaluate(*e)? {
+            Expression::Not(e) => match self.evaluate(*e)? {
                 Value::Bool(x) => Ok(Value::Bool(!x)),
                 _ => Err(String::from("invalid types")),
             },
             Expression::Eq(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a == b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a == b)),
@@ -35,10 +31,10 @@ impl EvalContext {
                     _ => Err(String::from("invalid types")),
                 }
             }
-            Expression::Neq(a, b) => evaluate(Expression::Not(Box::new(Expression::Eq(a, b)))),
+            Expression::Neq(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Eq(a, b)))),
             Expression::Lt(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a < b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a < b)),
@@ -47,8 +43,8 @@ impl EvalContext {
                 }
             }
             Expression::Lte(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a <= b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a <= b)),
@@ -56,11 +52,11 @@ impl EvalContext {
                     _ => Err(String::from("invalid types")),
                 }
             }
-            Expression::Gte(a, b) => evaluate(Expression::Not(Box::new(Expression::Lt(a, b)))),
-            Expression::Gt(a, b) => evaluate(Expression::Not(Box::new(Expression::Lte(a, b)))),
+            Expression::Gte(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lt(a, b)))),
+            Expression::Gt(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lte(a, b)))),
             Expression::Add(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a + b)),
                     (Value::F64(a), Value::F64(b)) => Ok(Value::F64(a + b)),
@@ -71,16 +67,16 @@ impl EvalContext {
                 }
             }
             Expression::Sub(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a - b)),
                     _ => Err(String::from("invalid types")),
                 }
             }
             Expression::Mul(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a * b)),
                     (Value::F64(a), Value::F64(b)) => Ok(Value::F64(a * b)),
@@ -88,8 +84,8 @@ impl EvalContext {
                 }
             }
             Expression::Div(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => {
                         if b != 0 {
@@ -109,8 +105,8 @@ impl EvalContext {
                 }
             }
             Expression::Mod(a, b) => {
-                let a = evaluate(*a)?;
-                let b = evaluate(*b)?;
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a % b)),
                     _ => Err(String::from("invalid types")),
@@ -121,14 +117,14 @@ impl EvalContext {
                 None => Err(format!("no such binding: {:?}", name)),
             },
             Expression::Member(e, name) => {
-                let e = evaluate(*e)?;
+                let e = self.evaluate(*e)?;
                 Err(format!("method {:?} not implemented on {:?}", name, e))
             }
             Expression::Method(e, name, args) => {
-                let e = evaluate(*e)?;
+                let e = self.evaluate(*e)?;
                 let args = args
                     .into_iter()
-                    .map(|a| evaluate(a))
+                    .map(|a| self.evaluate(a))
                     .collect::<Result<Vec<_>, _>>()?;
                 methods::evaluate_method(name, e, args)
             }
@@ -156,12 +152,15 @@ impl EvalContext {
 
 #[cfg(test)]
 mod test {
-    use super::evaluate;
-    use crate::model::Value;
+    use crate::model::{EvalResult, Expression, Value};
     use crate::parser::parse;
 
     fn assert_eval_true(input: &str) {
         assert_eq!(evaluate(parse(input).unwrap()).unwrap(), Value::Bool(true));
+    }
+
+    fn evaluate(expr: Expression) -> EvalResult {
+        super::EvalContext::default().evaluate(expr)
     }
 
     #[test]

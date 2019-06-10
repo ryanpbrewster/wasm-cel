@@ -3,7 +3,8 @@ const KEY_CODE_ENTER = 13;
 window.onload = function() {
   const dom = {
     input: document.getElementById("input"),
-    output: document.getElementById("output"),
+    value: document.getElementById("value"),
+    ast: document.getElementById("ast"),
   };
 
   import("../crate/pkg").then(module => {
@@ -17,8 +18,12 @@ window.onload = function() {
       } else {
         evt.preventDefault();
         const input = dom.input.value;
-        const output = module.parse_to_ast(input);
-        dom.output.textContent = JSON.stringify(output, null, 2);
+
+        const value = module.evaluate(input);
+        dom.value.textContent = JSON.stringify(value, null, 2);
+
+        const ast = module.parse_to_ast(input);
+        dom.ast.textContent = JSON.stringify(ast, null, 2);
       }
     });
   });
