@@ -99,33 +99,21 @@ fn extract_member(pair: Pair<Rule>) -> Expression {
     let mut pairs = pair.into_inner();
     let mut a = extract_operand(pairs.next().unwrap());
 
-    let mut prev = None;
     while let Some(pair) = pairs.next() {
-        match prev {
-            None => {
-                prev = Some(extract_identifier(pair));
-                continue;
+        match pair.as_rule() {
+            Rule::MethodCall => {
+                let (id, args) = extract_method_call(pair);
+                a = Expression::Method(Box::new(a), id, args);
             }
-            Some(id) => {
-                match pair.as_rule() {
-                    Rule::Identifier => {
-                        a = Expression::Member(Box::new(a), id);
-                        prev = Some(extract_identifier(pair));
-                    }
-                    Rule::Args => {
-                        a = Expression::Method(Box::new(a), id, extract_args(pair));
-                        prev = None;
-                    }
-                    _ => unreachable!(),
-                };
+            Rule::MemberRef => {
+                let id = extract_member_ref(pair);
+                a = Expression::Member(Box::new(a), id);
             }
-        }
+            _ => unreachable!(),
+        };
     }
 
-    match prev {
-        None => a,
-        Some(id) => Expression::Member(Box::new(a), id),
-    }
+    a
 }
 
 fn extract_operand(pair: Pair<Rule>) -> Expression {
@@ -137,6 +125,20 @@ fn extract_operand(pair: Pair<Rule>) -> Expression {
         Rule::Relation => extract_relation(a),
         _ => unreachable!(),
     }
+}
+
+fn extract_method_call(pair: Pair<Rule>) -> (Identifier, Vec<Expression>) {
+    assert_eq!(pair.as_rule(), Rule::MethodCall);
+    let mut pairs = pair.into_inner();
+    (
+        extract_identifier(pairs.next().unwrap()),
+        extract_args(pairs.next().unwrap()),
+    )
+}
+
+fn extract_member_ref(pair: Pair<Rule>) -> Identifier {
+    assert_eq!(pair.as_rule(), Rule::MemberRef);
+    extract_identifier(pair.into_inner().next().unwrap())
 }
 
 fn extract_identifier(pair: Pair<Rule>) -> Identifier {
