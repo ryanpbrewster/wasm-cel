@@ -53,3 +53,5 @@ impl FromStr for Identifier {
         Ok(Identifier(input.to_owned()))
     }
 }
+
+pub type EvalResult = Result<Value, String>;
