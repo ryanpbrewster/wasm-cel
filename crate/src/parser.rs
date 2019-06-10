@@ -18,7 +18,27 @@ pub fn parse(input: &str) -> Result<Expression, String> {
 
 fn extract_expression(pair: Pair<Rule>) -> Expression {
     assert_eq!(pair.as_rule(), Rule::Expression);
-    extract_relation(pair.into_inner().next().unwrap())
+    extract_disjunction(pair.into_inner().next().unwrap())
+}
+
+fn extract_disjunction(pair: Pair<Rule>) -> Expression {
+    assert_eq!(pair.as_rule(), Rule::Disjunction);
+    let mut pairs = pair.into_inner();
+    let mut a = extract_conjunction(pairs.next().unwrap());
+    while let Some(b) = pairs.next() {
+        a = Expression::Or(Box::new(a), Box::new(extract_conjunction(b)));
+    }
+    a
+}
+
+fn extract_conjunction(pair: Pair<Rule>) -> Expression {
+    assert_eq!(pair.as_rule(), Rule::Conjunction);
+    let mut pairs = pair.into_inner();
+    let mut a = extract_relation(pairs.next().unwrap());
+    while let Some(b) = pairs.next() {
+        a = Expression::And(Box::new(a), Box::new(extract_relation(b)));
+    }
+    a
 }
 
 fn extract_relation(pair: Pair<Rule>) -> Expression {

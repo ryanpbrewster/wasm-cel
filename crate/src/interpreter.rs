@@ -15,12 +15,28 @@ impl EvalContext {
             Expression::Neg(e) => match self.evaluate(*e)? {
                 Value::I64(x) => Ok(Value::I64(-x)),
                 Value::F64(x) => Ok(Value::F64(-x)),
-                _ => Err(String::from("invalid types")),
+                _ => Err(String::from("invalid type for negation")),
             },
             Expression::Not(e) => match self.evaluate(*e)? {
                 Value::Bool(x) => Ok(Value::Bool(!x)),
-                _ => Err(String::from("invalid types")),
+                _ => Err(String::from("invalid type for not")),
             },
+            Expression::Or(a, b) => {
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
+                match (a, b) {
+                    (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a || b)),
+                    _ => Err(String::from("invalid types for ||")),
+                }
+            }
+            Expression::And(a, b) => {
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
+                match (a, b) {
+                    (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a && b)),
+                    _ => Err(String::from("invalid types for &&")),
+                }
+            }
             Expression::Eq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
@@ -28,7 +44,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a == b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a == b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a == b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for ==")),
                 }
             }
             Expression::Neq(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Eq(a, b)))),
@@ -39,7 +55,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a < b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a < b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a < b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for <")),
                 }
             }
             Expression::Lte(a, b) => {
@@ -49,7 +65,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a <= b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a <= b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a <= b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for <=")),
                 }
             }
             Expression::Gte(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lt(a, b)))),
@@ -63,7 +79,7 @@ impl EvalContext {
                     (Value::String(a), Value::String(b)) => {
                         Ok(Value::String(a.chars().chain(b.chars()).collect()))
                     }
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for +")),
                 }
             }
             Expression::Sub(a, b) => {
@@ -71,7 +87,7 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a - b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for -")),
                 }
             }
             Expression::Mul(a, b) => {
@@ -80,7 +96,7 @@ impl EvalContext {
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a * b)),
                     (Value::F64(a), Value::F64(b)) => Ok(Value::F64(a * b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for *")),
                 }
             }
             Expression::Div(a, b) => {
@@ -101,7 +117,7 @@ impl EvalContext {
                             Err(String::from("divide by zero"))
                         }
                     }
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for /")),
                 }
             }
             Expression::Mod(a, b) => {
@@ -109,7 +125,7 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a % b)),
-                    _ => Err(String::from("invalid types")),
+                    _ => Err(String::from("invalid types for %")),
                 }
             }
             Expression::Binding(name) => match self.bindings.get(&name) {
@@ -314,7 +330,7 @@ mod test {
         let input = r#" "asdf" + 5 "#;
         assert_eq!(
             evaluate(parse(input).unwrap()),
-            Err(String::from("invalid types"))
+            Err(String::from("invalid types for +"))
         );
     }
 
@@ -323,7 +339,7 @@ mod test {
         let input = r#" "asdf" - "pqrs" "#;
         assert_eq!(
             evaluate(parse(input).unwrap()),
-            Err(String::from("invalid types"))
+            Err(String::from("invalid types for -"))
         );
     }
 

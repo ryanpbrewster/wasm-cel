@@ -3,6 +3,8 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Expression {
+    Or(Box<Expression>, Box<Expression>),
+    And(Box<Expression>, Box<Expression>),
     Eq(Box<Expression>, Box<Expression>),
     Neq(Box<Expression>, Box<Expression>),
     Lt(Box<Expression>, Box<Expression>),
