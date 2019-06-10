@@ -1,11 +1,6 @@
-// extern crate pest;
-// extern crate pest_derive;
-// extern crate serde;
-// extern crate serde_json;
-// extern crate wasm_bindgen;
-
 use wasm_bindgen::prelude::*;
 
+mod interpreter;
 mod model;
 mod parser;
 
