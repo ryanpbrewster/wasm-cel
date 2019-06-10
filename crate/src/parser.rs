@@ -1,4 +1,4 @@
-use crate::model::{Expression, Literal};
+use crate::model::{Expression, Identifier, Literal};
 
 use pest::iterators::Pair;
 use pest::Parser;
@@ -81,8 +81,7 @@ fn extract_unary(pair: Pair<Rule>) -> Expression {
     let mut pairs = pair.into_inner();
     let a = pairs.next().unwrap();
     match a.as_rule() {
-        Rule::Relation => extract_relation(a),
-        Rule::Literal => Expression::Lit(extract_literal(a)),
+        Rule::Member => extract_member(a),
         Rule::UnaryOp => {
             assert_eq!(a.as_rule(), Rule::UnaryOp);
             match a.as_str() {
@@ -93,6 +92,61 @@ fn extract_unary(pair: Pair<Rule>) -> Expression {
         }
         _ => unreachable!(),
     }
+}
+
+fn extract_member(pair: Pair<Rule>) -> Expression {
+    assert_eq!(pair.as_rule(), Rule::Member);
+    let mut pairs = pair.into_inner();
+    let mut a = extract_operand(pairs.next().unwrap());
+
+    let mut prev = None;
+    while let Some(pair) = pairs.next() {
+        match prev {
+            None => {
+                prev = Some(extract_identifier(pair));
+                continue;
+            }
+            Some(id) => {
+                match pair.as_rule() {
+                    Rule::Identifier => {
+                        a = Expression::Member(Box::new(a), id);
+                        prev = Some(extract_identifier(pair));
+                    }
+                    Rule::Args => {
+                        a = Expression::Method(Box::new(a), id, extract_args(pair));
+                        prev = None;
+                    }
+                    _ => unreachable!(),
+                };
+            }
+        }
+    }
+
+    match prev {
+        None => a,
+        Some(id) => Expression::Member(Box::new(a), id),
+    }
+}
+
+fn extract_operand(pair: Pair<Rule>) -> Expression {
+    assert_eq!(pair.as_rule(), Rule::Operand);
+    let a = pair.into_inner().next().unwrap();
+    match a.as_rule() {
+        Rule::Literal => Expression::Lit(extract_literal(a)),
+        Rule::Identifier => Expression::Binding(extract_identifier(a)),
+        Rule::Relation => extract_relation(a),
+        _ => unreachable!(),
+    }
+}
+
+fn extract_identifier(pair: Pair<Rule>) -> Identifier {
+    assert_eq!(pair.as_rule(), Rule::Identifier);
+    pair.as_str().parse().expect("parse identifier")
+}
+
+fn extract_args(pair: Pair<Rule>) -> Vec<Expression> {
+    assert_eq!(pair.as_rule(), Rule::Args);
+    pair.into_inner().map(extract_relation).collect()
 }
 
 fn extract_literal(pair: Pair<Rule>) -> Literal {
@@ -208,6 +262,11 @@ mod test {
     }
 
     #[test]
+    fn null_literal() {
+        assert_valid("null");
+    }
+
+    #[test]
     fn cel_smoke() {
         let input = "22 * (4 + 15)";
         assert_eq!(
@@ -298,5 +357,20 @@ mod test {
     #[test]
     fn valid_bytes() {
         assert_eq!(parse(r#" b"asdf" "#).unwrap(), literal(&"asdf".as_bytes()));
+    }
+
+    #[test]
+    fn method_call() {
+        assert_valid(r#" [1, 2, 3].len() "#);
+        assert_valid(r#" 42.pow(42) "#);
+        assert_valid(r#" ([1] + [2]).len() "#);
+        assert_valid(r#" ([1] + [2]).len().pow(2) "#);
+        assert_valid(r#" ([1] + [2]).foo.bar.baz(1,2,3).length.asdf("asdf") "#);
+    }
+
+    #[test]
+    fn member_access() {
+        assert_valid(r#" foo "#);
+        assert_valid(r#" foo.bar.baz "#);
     }
 }

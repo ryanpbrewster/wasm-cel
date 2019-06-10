@@ -14,6 +14,6 @@ mod parser;
 pub fn parse_to_ast(input: String) -> JsValue {
     match parser::parse(&input) {
         Ok(parsed) => JsValue::from_serde(&parsed).expect("serialize"),
-        Err(err) => JsValue::NULL,
+        Err(err) => JsValue::from_str(&err),
     }
 }

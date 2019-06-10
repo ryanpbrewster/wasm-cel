@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Expression {
@@ -15,7 +16,10 @@ pub enum Expression {
     Mod(Box<Expression>, Box<Expression>),
     Neg(Box<Expression>),
     Not(Box<Expression>),
+    Member(Box<Expression>, Identifier),
+    Method(Box<Expression>, Identifier, Vec<Expression>),
     Lit(Literal),
+    Binding(Identifier),
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
@@ -27,4 +31,14 @@ pub enum Literal {
     Bytes(Vec<u8>),
     List(Vec<Expression>),
     Null,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub struct Identifier(String);
+
+impl FromStr for Identifier {
+    type Err = ();
+    fn from_str(input: &str) -> Result<Identifier, ()> {
+        Ok(Identifier(input.to_owned()))
+    }
 }
