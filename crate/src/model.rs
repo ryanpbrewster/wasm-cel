@@ -34,7 +34,18 @@ pub enum Literal {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
-pub struct Identifier(String);
+pub enum Value {
+    I64(i64),
+    F64(f64),
+    Bool(bool),
+    String(String),
+    Bytes(Vec<u8>),
+    List(Vec<Value>),
+    Null,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
+pub struct Identifier(pub String);
 
 impl FromStr for Identifier {
     type Err = ();
