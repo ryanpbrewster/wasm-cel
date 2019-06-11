@@ -38,8 +38,16 @@ impl EvalContext {
                 }
             }
             Expression::And(a, b) => {
-                let a = self.evaluate(*a)?;
-                let b = self.evaluate(*b)?;
+                let a = match self.evaluate(*a) {
+                    Ok(Value::Bool(false)) => return Ok(Value::Bool(false)),
+                    other => other,
+                };
+                let b = match self.evaluate(*b) {
+                    Ok(Value::Bool(false)) => return Ok(Value::Bool(false)),
+                    other => other,
+                };
+                let a = a?;
+                let b = b?;
                 match (a, b) {
                     (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a && b)),
                     _ => Err(String::from("invalid types for &&")),
@@ -369,6 +377,21 @@ mod test {
     #[test]
     fn or_false_with_error() {
         let input = r#" false || 1 / 0 "#;
+        assert_eq!(
+            evaluate(parse(input).unwrap()),
+            Err(String::from("divide by zero"))
+        );
+    }
+
+    #[test]
+    fn and_false_with_error() {
+        let input = r#" false && 1 / 0 "#;
+        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(false)));
+    }
+
+    #[test]
+    fn and_true_with_error() {
+        let input = r#" true && 1 / 0 "#;
         assert_eq!(
             evaluate(parse(input).unwrap()),
             Err(String::from("divide by zero"))

@@ -239,7 +239,7 @@ fn extract_list(pair: Pair<Rule>) -> Literal {
     assert_eq!(pair.as_rule(), Rule::ListLiteral);
     let mut vs = Vec::new();
     for p in pair.into_inner() {
-        vs.push(extract_addition(p));
+        vs.push(extract_disjunction(p));
     }
     Literal::List(vs)
 }
@@ -305,15 +305,14 @@ mod test {
 
     #[test]
     fn cel_list() {
-        let input = "[0, '1', 2 + '3']";
+        let input = "[0, false || true]";
         assert_eq!(
             parse(input),
             Ok(Expression::Lit(Literal::List(vec![
                 Expression::Lit(Literal::I64(0)),
-                Expression::Lit(Literal::String(String::from("1"))),
-                Expression::Add(
-                    Box::new(Expression::Lit(Literal::I64(2))),
-                    Box::new(Expression::Lit(Literal::String(String::from("3")))),
+                Expression::Or(
+                    Box::new(Expression::Lit(Literal::Bool(false))),
+                    Box::new(Expression::Lit(Literal::Bool(true))),
                 )
             ])))
         );
