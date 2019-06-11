@@ -187,10 +187,6 @@ mod test {
     use crate::model::{EvalResult, Value};
     use crate::parser::parse;
 
-    fn assert_eval_true(input: &str) {
-        assert_eq!(evaluate(input).unwrap(), Value::Bool(true));
-    }
-
     fn evaluate(input: &str) -> EvalResult {
         super::EvalContext::default().evaluate(parse(input).expect("parse"))
     }
@@ -257,10 +253,13 @@ mod test {
 
     #[test]
     fn bytes_cmp() {
-        assert_eval_true(r#" b"\x00" < b"\x01" "#);
-        assert_eval_true(r#" b"asdf" < b"pqrs" "#);
-        assert_eval_true(r#" b"" < b"asdf" "#);
-        assert_eval_true(r#" b"\xFE\xFF\xFF\xFF\xFF" < b"\xFF" "#);
+        assert_eq!(evaluate(r#" b"\x00" < b"\x01" "#), Ok(Value::Bool(true)));
+        assert_eq!(evaluate(r#" b"asdf" < b"pqrs" "#), Ok(Value::Bool(true)));
+        assert_eq!(evaluate(r#" b"" < b"asdf" "#), Ok(Value::Bool(true)));
+        assert_eq!(
+            evaluate(r#" b"\xFE\xFF\xFF\xFF\xFF" < b"\xFF" "#),
+            Ok(Value::Bool(true))
+        );
     }
 
     #[test]
