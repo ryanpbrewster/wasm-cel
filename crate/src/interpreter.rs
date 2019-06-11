@@ -184,84 +184,75 @@ impl EvalContext {
 
 #[cfg(test)]
 mod test {
-    use crate::model::{EvalResult, Expression, Value};
+    use crate::model::{EvalResult, Value};
     use crate::parser::parse;
 
     fn assert_eval_true(input: &str) {
-        assert_eq!(evaluate(parse(input).unwrap()).unwrap(), Value::Bool(true));
+        assert_eq!(evaluate(input).unwrap(), Value::Bool(true));
     }
 
-    fn evaluate(expr: Expression) -> EvalResult {
-        super::EvalContext::default().evaluate(expr)
+    fn evaluate(input: &str) -> EvalResult {
+        super::EvalContext::default().evaluate(parse(input).expect("parse"))
     }
 
     #[test]
     fn smoke() {
         let input = r#" 1 + 2 + 3 + 4 + 5 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Ok(Value::I64(1 + 2 + 3 + 4 + 5)),
-        );
+        assert_eq!(evaluate(input), Ok(Value::I64(1 + 2 + 3 + 4 + 5)));
     }
 
     #[test]
     fn unary_negative_i64() {
         let input = r#" -5 + 8 "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::I64(3)),);
+        assert_eq!(evaluate(input), Ok(Value::I64(3)));
     }
 
     #[test]
     fn unary_negative_f64() {
         let input = r#" -5.1 + 8.1 "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::F64(3.0)),);
+        assert_eq!(evaluate(input), Ok(Value::F64(3.0)));
     }
 
     #[test]
     fn unary_not() {
         let input = r#" !(5 + 5 == 10) "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(false)),);
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
     }
 
     #[test]
     fn string_addition() {
         let input = r#" "asdf" + "pqrs" + "tuvw" == "asdfpqrstuvw" "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(true)),);
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
     #[test]
     fn addition_and_subtraction() {
         let input = r#" 1 - 2 + 3 - 4 + 5 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Ok(Value::I64(1 - 2 + 3 - 4 + 5)),
-        );
+        assert_eq!(evaluate(input), Ok(Value::I64(1 - 2 + 3 - 4 + 5)));
     }
 
     #[test]
     fn multiplication_and_division() {
         let input = r#" 1.0 / 2.0 * 3.0 / 4.0 * 5.0 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Ok(Value::F64(1.0 / 2.0 * 3.0 / 4.0 * 5.0)),
-        );
+        assert_eq!(evaluate(input), Ok(Value::F64(1.0 / 2.0 * 3.0 / 4.0 * 5.0)));
     }
 
     #[test]
     fn string_len() {
         let input = r#" "asdf".len() + "pqrs".len() "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::I64(8)),);
+        assert_eq!(evaluate(input), Ok(Value::I64(8)));
     }
 
     #[test]
     fn bytes_len() {
         let input = r#" b"\xFF".len() "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::I64(1)),);
+        assert_eq!(evaluate(input), Ok(Value::I64(1)));
     }
 
     #[test]
     fn bytes_eq() {
         let input = r#" b"¢" == b'\xC2\xA2' "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(true)));
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
     #[test]
@@ -275,14 +266,14 @@ mod test {
     #[test]
     fn int_pow() {
         let input = r#" 42.pow(2) "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::I64(42 * 42)),);
+        assert_eq!(evaluate(input), Ok(Value::I64(42 * 42)));
     }
 
     #[test]
     fn float_powf() {
         let input = r#" 3.1415926.pow(3.1415926) "#;
         assert_eq!(
-            evaluate(parse(input).unwrap()),
+            evaluate(input),
             Ok(Value::F64(3.1415926f64.powf(3.1415926))),
         );
     }
@@ -290,111 +281,84 @@ mod test {
     #[test]
     fn float_powi() {
         let input = r#" 3.1415926.pow(2) "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Ok(Value::F64(3.1415926f64.powf(2.0))),
-        );
+        assert_eq!(evaluate(input), Ok(Value::F64(3.1415926f64.powf(2.0))));
     }
 
     #[test]
     fn list_len() {
         let input = r#" ["a", 3, false].len() "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::I64(3)),);
+        assert_eq!(evaluate(input), Ok(Value::I64(3)));
     }
 
     #[test]
     fn list_contains_true() {
         let input = r#" ["a", 3, false].contains(3) "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(true)),);
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
     #[test]
     fn list_contains_false() {
         let input = r#" ["a", 3, false].contains(4) "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(false)),);
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
     }
 
     #[test]
     fn list_contains_true_with_error() {
         let input = r#" ["a", 3, 1 / 0].contains(3) "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 
     #[test]
     fn list_contains_false_with_error() {
         let input = r#" ["a", 3, 1 / 0].contains(2) "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero")),
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 
     #[test]
     fn list_contains_error() {
         let input = r#" ["a", 3, false].contains(1 / 0) "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero")),
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 
     #[test]
     fn type_error_adding_string_and_int() {
         let input = r#" "asdf" + 5 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("invalid types for +"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("invalid types for +")));
     }
 
     #[test]
     fn type_error_subtracting_strings() {
         let input = r#" "asdf" - "pqrs" "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("invalid types for -"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("invalid types for -")));
     }
 
     #[test]
     fn eval_error_divide_by_zero_int() {
         let input = r#" 1 / 0 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 
     #[test]
     fn or_true_with_error() {
         let input = r#" true || 1 / 0 "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(true)));
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
     #[test]
     fn or_false_with_error() {
         let input = r#" false || 1 / 0 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 
     #[test]
     fn and_false_with_error() {
         let input = r#" false && 1 / 0 "#;
-        assert_eq!(evaluate(parse(input).unwrap()), Ok(Value::Bool(false)));
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
     }
 
     #[test]
     fn and_true_with_error() {
         let input = r#" true && 1 / 0 "#;
-        assert_eq!(
-            evaluate(parse(input).unwrap()),
-            Err(String::from("divide by zero"))
-        );
+        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
     }
 }
