@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::methods;
 use crate::model::{Error, EvalResult, Expression, Identifier, Literal, Op, Value};
+use std::cmp::Ordering;
 
 #[derive(Default)]
 pub struct EvalContext {
@@ -56,36 +57,53 @@ impl EvalContext {
             Expression::Eq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                match (a, b) {
-                    (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a == b)),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Bool(a == b)),
-                    (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a == b)),
-                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq)),
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq)),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Equal)),
                 }
             }
-            Expression::Neq(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Eq(a, b)))),
+            Expression::Neq(a, b) => {
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Neq)),
+                    Some(ord) => Ok(Value::Bool(ord != Ordering::Equal)),
+                }
+            }
             Expression::Lt(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                match (a, b) {
-                    (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a < b)),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Bool(a < b)),
-                    (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a < b)),
-                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Lt)),
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Lt)),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Less)),
                 }
             }
             Expression::Lte(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                match (a, b) {
-                    (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a <= b)),
-                    (Value::String(a), Value::String(b)) => Ok(Value::Bool(a <= b)),
-                    (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a <= b)),
-                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Leq)),
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Lte)),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Less || ord == Ordering::Equal)),
                 }
             }
-            Expression::Gte(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lt(a, b)))),
-            Expression::Gt(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lte(a, b)))),
+            Expression::Gte(a, b) => {
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Gte)),
+                    Some(ord) => Ok(Value::Bool(
+                        ord == Ordering::Greater || ord == Ordering::Equal,
+                    )),
+                }
+            }
+            Expression::Gt(a, b) => {
+                let a = self.evaluate(*a)?;
+                let b = self.evaluate(*b)?;
+                match a.partial_cmp(&b) {
+                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Gt)),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Greater)),
+                }
+            }
             Expression::Add(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;

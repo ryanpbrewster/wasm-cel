@@ -47,10 +47,11 @@ pub enum Op {
     Or,
     And,
     Eq,
-    Leq,
+    Neq,
+    Lte,
     Lt,
     Gt,
-    Geq,
+    Gte,
 }
 
 impl Value {

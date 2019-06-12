@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 mod interpreter;
 mod methods;
 mod model;
+mod ordering;
 mod parser;
 
 /// Parse `input` into an AST, then serialize it as JSON.
