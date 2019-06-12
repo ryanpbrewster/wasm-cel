@@ -4,9 +4,6 @@ const METHOD_CONTAINS: &str = "contains";
 const METHOD_LEN: &str = "len";
 const METHOD_POW: &str = "pow";
 
-fn identifier(method: &str) -> Identifier {
-    Identifier(method.to_owned())
-}
 fn arg_kinds(args: Vec<Value>) -> Vec<Kind> {
     args.into_iter().map(|arg| arg.kind()).collect()
 }
@@ -24,7 +21,7 @@ fn evaluate_method_contains(operand: Value, args: Vec<Value>) -> EvalResult {
     if args.len() != 1 {
         return Err(Error::NoMethodWithSignature(
             operand.kind(),
-            identifier(METHOD_CONTAINS),
+            Identifier::new(METHOD_CONTAINS),
             arg_kinds(args),
         ));
     }
@@ -33,7 +30,7 @@ fn evaluate_method_contains(operand: Value, args: Vec<Value>) -> EvalResult {
         Value::List(elems) => Ok(Value::Bool(elems.contains(&arg))),
         other => Err(Error::NoMethodOnType(
             other.kind(),
-            Identifier(METHOD_CONTAINS.to_owned()),
+            Identifier::new(METHOD_CONTAINS),
         )),
     }
 }
@@ -42,7 +39,7 @@ fn evaluate_method_len(operand: Value, args: Vec<Value>) -> EvalResult {
     if args.len() != 0 {
         return Err(Error::NoMethodWithSignature(
             operand.kind(),
-            identifier(METHOD_LEN),
+            Identifier::new(METHOD_LEN),
             arg_kinds(args),
         ));
     }
@@ -51,7 +48,10 @@ fn evaluate_method_len(operand: Value, args: Vec<Value>) -> EvalResult {
         Value::String(s) => Ok(Value::I64(s.chars().count() as i64)),
         Value::Bytes(b) => Ok(Value::I64(b.len() as i64)),
         Value::Map(fields) => Ok(Value::I64(fields.len() as i64)),
-        other => Err(Error::NoMethodOnType(other.kind(), identifier(METHOD_LEN))),
+        other => Err(Error::NoMethodOnType(
+            other.kind(),
+            Identifier::new(METHOD_LEN),
+        )),
     }
 }
 
@@ -59,7 +59,7 @@ fn evaluate_method_pow(operand: Value, args: Vec<Value>) -> EvalResult {
     if args.len() != 1 {
         return Err(Error::NoMethodWithSignature(
             operand.kind(),
-            identifier(METHOD_POW),
+            Identifier::new(METHOD_POW),
             arg_kinds(args),
         ));
     }
@@ -69,7 +69,7 @@ fn evaluate_method_pow(operand: Value, args: Vec<Value>) -> EvalResult {
             Value::I64(exp) => Ok(Value::I64(i64::pow(base, exp as u32))),
             other => Err(Error::NoMethodWithSignature(
                 Kind::I64,
-                identifier(METHOD_POW),
+                Identifier::new(METHOD_POW),
                 vec![other.kind()],
             )),
         },
@@ -78,10 +78,13 @@ fn evaluate_method_pow(operand: Value, args: Vec<Value>) -> EvalResult {
             Value::F64(exp) => Ok(Value::F64(f64::powf(base, exp))),
             other => Err(Error::NoMethodWithSignature(
                 Kind::F64,
-                identifier(METHOD_POW),
+                Identifier::new(METHOD_POW),
                 vec![other.kind()],
             )),
         },
-        other => Err(Error::NoMethodOnType(other.kind(), identifier(METHOD_POW))),
+        other => Err(Error::NoMethodOnType(
+            other.kind(),
+            Identifier::new(METHOD_POW),
+        )),
     }
 }

@@ -491,7 +491,7 @@ mod test {
         let input = r#" { foo: "bar" }.len() "#;
         assert_eq!(
             evaluate(input),
-            Err(Error::NoSuchBinding(Identifier("foo".to_owned())))
+            Err(Error::NoSuchBinding(Identifier::new("foo")))
         );
     }
 

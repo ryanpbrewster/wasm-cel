@@ -111,11 +111,16 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
 pub struct Identifier(pub String);
+impl Identifier {
+    pub fn new(name: &str) -> Identifier {
+        Identifier(name.to_owned())
+    }
+}
 
 impl FromStr for Identifier {
     type Err = ();
     fn from_str(input: &str) -> Result<Identifier, ()> {
-        Ok(Identifier(input.to_owned()))
+        Ok(Identifier::new(input))
     }
 }
 
