@@ -57,18 +57,18 @@ impl EvalContext {
             Expression::Eq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                match a.partial_cmp(&b) {
-                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq)),
-                    Some(ord) => Ok(Value::Bool(ord == Ordering::Equal)),
+                if a.kind() != b.kind() {
+                    return Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq));
                 }
+                Ok(Value::Bool(a == b))
             }
             Expression::Neq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                match a.partial_cmp(&b) {
-                    None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Neq)),
-                    Some(ord) => Ok(Value::Bool(ord != Ordering::Equal)),
+                if a.kind() != b.kind() {
+                    return Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Neq));
                 }
+                Ok(Value::Bool(a != b))
             }
             Expression::Lt(a, b) => {
                 let a = self.evaluate(*a)?;
@@ -83,7 +83,7 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match a.partial_cmp(&b) {
                     None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Lte)),
-                    Some(ord) => Ok(Value::Bool(ord == Ordering::Less || ord == Ordering::Equal)),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Less || a == b)),
                 }
             }
             Expression::Gte(a, b) => {
@@ -91,9 +91,7 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match a.partial_cmp(&b) {
                     None => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Gte)),
-                    Some(ord) => Ok(Value::Bool(
-                        ord == Ordering::Greater || ord == Ordering::Equal,
-                    )),
+                    Some(ord) => Ok(Value::Bool(ord == Ordering::Greater || a == b)),
                 }
             }
             Expression::Gt(a, b) => {
@@ -112,6 +110,12 @@ impl EvalContext {
                     (Value::F64(a), Value::F64(b)) => Ok(Value::F64(a + b)),
                     (Value::String(a), Value::String(b)) => {
                         Ok(Value::String(a.chars().chain(b.chars()).collect()))
+                    }
+                    (Value::Bytes(a), Value::Bytes(b)) => {
+                        Ok(Value::Bytes(a.into_iter().chain(b.into_iter()).collect()))
+                    }
+                    (Value::List(a), Value::List(b)) => {
+                        Ok(Value::List(a.into_iter().chain(b.into_iter()).collect()))
                     }
                     (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Plus)),
                 }
@@ -247,6 +251,18 @@ mod test {
     #[test]
     fn string_addition() {
         let input = r#" "asdf" + "pqrs" + "tuvw" == "asdfpqrstuvw" "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn bytes_addition() {
+        let input = r#" b"asdf" + b"pqrs" + b"tuvw" == b"asdfpqrstuvw" "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn list_addition() {
+        let input = r#" [1,2,3] + ["a", "b", "c"] == [1, 2, 3, "a", "b", "c"] "#;
         assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
@@ -402,5 +418,49 @@ mod test {
     fn and_true_with_error() {
         let input = r#" true && 1 / 0 "#;
         assert_eq!(evaluate(input), Err(Error::DivisionByZero));
+    }
+
+    #[test]
+    fn eq_mismatched_types() {
+        let input = r#" 1 == false "#;
+        assert_eq!(
+            evaluate(input),
+            Err(Error::InvalidTypesForOperator(
+                Kind::I64,
+                Kind::Bool,
+                Op::Eq
+            ))
+        );
+    }
+
+    #[test]
+    fn eq_mismatched_values() {
+        let input = r#" 1 == 2 "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
+    }
+
+    #[test]
+    fn neq_mismatched_types() {
+        let input = r#" 1 != false "#;
+        assert_eq!(
+            evaluate(input),
+            Err(Error::InvalidTypesForOperator(
+                Kind::I64,
+                Kind::Bool,
+                Op::Neq
+            ))
+        );
+    }
+
+    #[test]
+    fn neq_mismatched_values() {
+        let input = r#" 1 != 2 "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn neq_matching_values() {
+        let input = r#" 1 != 1 "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
     }
 }
