@@ -180,6 +180,7 @@ fn extract_literal(pair: Pair<Rule>) -> Literal {
         Rule::FloatLiteral => Literal::F64(pair.as_str().parse().unwrap()),
         Rule::IntLiteral => Literal::I64(pair.as_str().parse().unwrap()),
         Rule::ListLiteral => extract_list(pair),
+        Rule::MapLiteral => extract_map(pair),
         Rule::BoolLiteral => Literal::Bool(pair.as_str().parse().unwrap()),
         Rule::NullLiteral => Literal::Null,
         _ => unreachable!(),
@@ -242,6 +243,24 @@ fn extract_list(pair: Pair<Rule>) -> Literal {
         vs.push(extract_disjunction(p));
     }
     Literal::List(vs)
+}
+
+fn extract_map(pair: Pair<Rule>) -> Literal {
+    assert_eq!(pair.as_rule(), Rule::MapLiteral);
+    let mut fields = Vec::new();
+    for p in pair.into_inner() {
+        fields.push(extract_map_field(p));
+    }
+    Literal::Map(fields)
+}
+
+fn extract_map_field(pair: Pair<Rule>) -> (Expression, Expression) {
+    assert_eq!(pair.as_rule(), Rule::MapField);
+    let mut pairs = pair.into_inner();
+    (
+        extract_disjunction(pairs.next().unwrap()),
+        extract_disjunction(pairs.next().unwrap()),
+    )
 }
 
 #[cfg(test)]
@@ -316,6 +335,13 @@ mod test {
                 )
             ])))
         );
+    }
+
+    #[test]
+    fn valid_maps() {
+        assert_valid(r#" { "foo": "bar" } "#); // string literals
+        assert_valid(r#" { foo: bar } "#); // bindings
+        assert_valid(r#" { a: b, c: d, e: f } "#); // multiple fields
     }
 
     #[test]

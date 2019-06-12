@@ -50,6 +50,7 @@ fn evaluate_method_len(operand: Value, args: Vec<Value>) -> EvalResult {
         Value::List(elems) => Ok(Value::I64(elems.len() as i64)),
         Value::String(s) => Ok(Value::I64(s.chars().count() as i64)),
         Value::Bytes(b) => Ok(Value::I64(b.len() as i64)),
+        Value::Map(fields) => Ok(Value::I64(fields.len() as i64)),
         other => Err(Error::NoMethodOnType(other.kind(), identifier(METHOD_LEN))),
     }
 }

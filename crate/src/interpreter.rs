@@ -211,13 +211,29 @@ impl EvalContext {
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Value::List(vs))
             }
+            Literal::Map(kvs) => {
+                let mut m = HashMap::new();
+                for (k, v) in kvs {
+                    let k = self.evaluate(k)?;
+                    let v = self.evaluate(v)?;
+                    match k {
+                        Value::String(k) => {
+                            if m.insert(k.clone(), v).is_some() {
+                                return Err(Error::DuplicateMapKey(k));
+                            }
+                        }
+                        other => return Err(Error::InvalidMapKey(other.kind())),
+                    }
+                }
+                Ok(Value::Map(m))
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::model::{Error, EvalResult, Kind, Op, Value};
+    use crate::model::{Error, EvalResult, Identifier, Kind, Op, Value};
     use crate::parser::parse;
 
     fn evaluate(input: &str) -> EvalResult {
@@ -462,5 +478,38 @@ mod test {
     fn neq_matching_values() {
         let input = r#" 1 != 1 "#;
         assert_eq!(evaluate(input), Ok(Value::Bool(false)));
+    }
+
+    #[test]
+    fn map_literal() {
+        let input = r#" { "foo": "bar" }.len() "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(1)));
+    }
+
+    #[test]
+    fn map_unbound_key() {
+        let input = r#" { foo: "bar" }.len() "#;
+        assert_eq!(
+            evaluate(input),
+            Err(Error::NoSuchBinding(Identifier("foo".to_owned())))
+        );
+    }
+
+    #[test]
+    fn map_non_string_key() {
+        let input = r#" { 1: "bar" }.len() "#;
+        assert_eq!(evaluate(input), Err(Error::InvalidMapKey(Kind::I64)));
+    }
+
+    #[test]
+    fn map_expression_key() {
+        let input = r#" { ("asdf" + "pqrs"): "bar" }.len() "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(1)));
+    }
+
+    #[test]
+    fn map_duplicate_keys() {
+        let input = r#" { "a": 0, "a": 1 }.len() "#;
+        assert_eq!(evaluate(input), Err(Error::DuplicateMapKey("a".to_owned())));
     }
 }

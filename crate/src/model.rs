@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
@@ -32,6 +33,7 @@ pub enum Kind {
     String,
     Bytes,
     List,
+    Map,
     Null,
 }
 
@@ -63,6 +65,7 @@ impl Value {
             Value::String(_) => Kind::String,
             Value::Bytes(_) => Kind::Bytes,
             Value::List(_) => Kind::List,
+            Value::Map(_) => Kind::Map,
             Value::Null => Kind::Null,
         }
     }
@@ -76,6 +79,7 @@ pub enum Literal {
     String(String),
     Bytes(Vec<u8>),
     List(Vec<Expression>),
+    Map(Vec<(Expression, Expression)>),
     Null,
 }
 
@@ -87,6 +91,7 @@ pub enum Value {
     String(String),
     Bytes(Vec<u8>),
     List(Vec<Value>),
+    Map(HashMap<String, Value>),
     Null,
 }
 
@@ -100,6 +105,8 @@ pub enum Error {
     InvalidTypesForOperator(Kind, Kind, Op),
     DivisionByZero,
     NoSuchBinding(Identifier),
+    InvalidMapKey(Kind),
+    DuplicateMapKey(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
