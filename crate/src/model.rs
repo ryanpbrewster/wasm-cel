@@ -24,6 +24,49 @@ pub enum Expression {
     Binding(Identifier),
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
+pub enum Kind {
+    I64,
+    F64,
+    Bool,
+    String,
+    Bytes,
+    List,
+    Null,
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
+pub enum Op {
+    Not,
+    Neg,
+    Plus,
+    Minus,
+    Times,
+    Div,
+    Mod,
+    Or,
+    And,
+    Eq,
+    Leq,
+    Lt,
+    Gt,
+    Geq,
+}
+
+impl Value {
+    pub fn kind(&self) -> Kind {
+        match *self {
+            Value::I64(_) => Kind::I64,
+            Value::F64(_) => Kind::F64,
+            Value::Bool(_) => Kind::Bool,
+            Value::String(_) => Kind::String,
+            Value::Bytes(_) => Kind::Bytes,
+            Value::List(_) => Kind::List,
+            Value::Null => Kind::Null,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Literal {
     I64(i64),
@@ -46,6 +89,18 @@ pub enum Value {
     Null,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    Unknown(String),
+    NoMethod(Identifier),
+    NoMethodOnType(Kind, Identifier),
+    NoMethodWithSignature(Kind, Identifier, Vec<Kind>),
+    InvalidTypeForOperator(Kind, Op),
+    InvalidTypesForOperator(Kind, Kind, Op),
+    DivisionByZero,
+    NoSuchBinding(Identifier),
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
 pub struct Identifier(pub String);
 
@@ -56,4 +111,4 @@ impl FromStr for Identifier {
     }
 }
 
-pub type EvalResult = Result<Value, String>;
+pub type EvalResult = Result<Value, Error>;

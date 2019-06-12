@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::methods;
-use crate::model::{EvalResult, Expression, Identifier, Literal, Value};
+use crate::model::{Error, EvalResult, Expression, Identifier, Literal, Op, Value};
 
 #[derive(Default)]
 pub struct EvalContext {
@@ -15,11 +15,11 @@ impl EvalContext {
             Expression::Neg(e) => match self.evaluate(*e)? {
                 Value::I64(x) => Ok(Value::I64(-x)),
                 Value::F64(x) => Ok(Value::F64(-x)),
-                _ => Err(String::from("invalid type for negation")),
+                other => Err(Error::InvalidTypeForOperator(other.kind(), Op::Neg)),
             },
             Expression::Not(e) => match self.evaluate(*e)? {
                 Value::Bool(x) => Ok(Value::Bool(!x)),
-                _ => Err(String::from("invalid type for not")),
+                other => Err(Error::InvalidTypeForOperator(other.kind(), Op::Not)),
             },
             Expression::Or(a, b) => {
                 let a = match self.evaluate(*a) {
@@ -34,7 +34,7 @@ impl EvalContext {
                 let b = b?;
                 match (a, b) {
                     (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a || b)),
-                    _ => Err(String::from("invalid types for ||")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Or)),
                 }
             }
             Expression::And(a, b) => {
@@ -50,7 +50,7 @@ impl EvalContext {
                 let b = b?;
                 match (a, b) {
                     (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a && b)),
-                    _ => Err(String::from("invalid types for &&")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::And)),
                 }
             }
             Expression::Eq(a, b) => {
@@ -60,7 +60,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a == b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a == b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a == b)),
-                    _ => Err(String::from("invalid types for ==")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq)),
                 }
             }
             Expression::Neq(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Eq(a, b)))),
@@ -71,7 +71,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a < b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a < b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a < b)),
-                    _ => Err(String::from("invalid types for <")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Lt)),
                 }
             }
             Expression::Lte(a, b) => {
@@ -81,7 +81,7 @@ impl EvalContext {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::Bool(a <= b)),
                     (Value::String(a), Value::String(b)) => Ok(Value::Bool(a <= b)),
                     (Value::Bytes(a), Value::Bytes(b)) => Ok(Value::Bool(a <= b)),
-                    _ => Err(String::from("invalid types for <=")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Leq)),
                 }
             }
             Expression::Gte(a, b) => self.evaluate(Expression::Not(Box::new(Expression::Lt(a, b)))),
@@ -95,7 +95,7 @@ impl EvalContext {
                     (Value::String(a), Value::String(b)) => {
                         Ok(Value::String(a.chars().chain(b.chars()).collect()))
                     }
-                    _ => Err(String::from("invalid types for +")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Plus)),
                 }
             }
             Expression::Sub(a, b) => {
@@ -103,7 +103,11 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a - b)),
-                    _ => Err(String::from("invalid types for -")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(
+                        a.kind(),
+                        b.kind(),
+                        Op::Minus,
+                    )),
                 }
             }
             Expression::Mul(a, b) => {
@@ -112,7 +116,11 @@ impl EvalContext {
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a * b)),
                     (Value::F64(a), Value::F64(b)) => Ok(Value::F64(a * b)),
-                    _ => Err(String::from("invalid types for *")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(
+                        a.kind(),
+                        b.kind(),
+                        Op::Times,
+                    )),
                 }
             }
             Expression::Div(a, b) => {
@@ -123,17 +131,17 @@ impl EvalContext {
                         if b != 0 {
                             Ok(Value::I64(a / b))
                         } else {
-                            Err(String::from("divide by zero"))
+                            Err(Error::DivisionByZero)
                         }
                     }
                     (Value::F64(a), Value::F64(b)) => {
                         if b != 0.0 {
                             Ok(Value::F64(a / b))
                         } else {
-                            Err(String::from("divide by zero"))
+                            Err(Error::DivisionByZero)
                         }
                     }
-                    _ => Err(String::from("invalid types for /")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Div)),
                 }
             }
             Expression::Mod(a, b) => {
@@ -141,16 +149,19 @@ impl EvalContext {
                 let b = self.evaluate(*b)?;
                 match (a, b) {
                     (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a % b)),
-                    _ => Err(String::from("invalid types for %")),
+                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Mod)),
                 }
             }
             Expression::Binding(name) => match self.bindings.get(&name) {
                 Some(value) => Ok(value.clone()),
-                None => Err(format!("no such binding: {:?}", name)),
+                None => Err(Error::NoSuchBinding(name)),
             },
             Expression::Member(e, name) => {
                 let e = self.evaluate(*e)?;
-                Err(format!("method {:?} not implemented on {:?}", name, e))
+                Err(Error::Unknown(format!(
+                    "method {:?} not implemented on {:?}",
+                    name, e
+                )))
             }
             Expression::Method(e, name, args) => {
                 let e = self.evaluate(*e)?;
@@ -184,7 +195,7 @@ impl EvalContext {
 
 #[cfg(test)]
 mod test {
-    use crate::model::{EvalResult, Value};
+    use crate::model::{Error, EvalResult, Kind, Op, Value};
     use crate::parser::parse;
 
     fn evaluate(input: &str) -> EvalResult {
@@ -304,37 +315,51 @@ mod test {
     #[test]
     fn list_contains_true_with_error() {
         let input = r#" ["a", 3, 1 / 0].contains(3) "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 
     #[test]
     fn list_contains_false_with_error() {
         let input = r#" ["a", 3, 1 / 0].contains(2) "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 
     #[test]
     fn list_contains_error() {
         let input = r#" ["a", 3, false].contains(1 / 0) "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 
     #[test]
     fn type_error_adding_string_and_int() {
         let input = r#" "asdf" + 5 "#;
-        assert_eq!(evaluate(input), Err(String::from("invalid types for +")));
+        assert_eq!(
+            evaluate(input),
+            Err(Error::InvalidTypesForOperator(
+                Kind::String,
+                Kind::I64,
+                Op::Plus,
+            ))
+        );
     }
 
     #[test]
     fn type_error_subtracting_strings() {
         let input = r#" "asdf" - "pqrs" "#;
-        assert_eq!(evaluate(input), Err(String::from("invalid types for -")));
+        assert_eq!(
+            evaluate(input),
+            Err(Error::InvalidTypesForOperator(
+                Kind::String,
+                Kind::String,
+                Op::Minus,
+            ))
+        );
     }
 
     #[test]
     fn eval_error_divide_by_zero_int() {
         let input = r#" 1 / 0 "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 
     #[test]
@@ -346,7 +371,7 @@ mod test {
     #[test]
     fn or_false_with_error() {
         let input = r#" false || 1 / 0 "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 
     #[test]
@@ -358,6 +383,6 @@ mod test {
     #[test]
     fn and_true_with_error() {
         let input = r#" true && 1 / 0 "#;
-        assert_eq!(evaluate(input), Err(String::from("divide by zero")));
+        assert_eq!(evaluate(input), Err(Error::DivisionByZero));
     }
 }

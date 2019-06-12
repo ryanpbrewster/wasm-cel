@@ -20,7 +20,7 @@ pub fn evaluate(input: String) -> JsValue {
     match parser::parse(&input) {
         Ok(parsed) => match interpreter::EvalContext::default().evaluate(parsed) {
             Ok(value) => JsValue::from_serde(&value).expect("serialize"),
-            Err(err) => JsValue::from_str(&err),
+            Err(err) => JsValue::from_str(&format!("{:?}", err)),
         },
         Err(err) => JsValue::from_str(&err),
     }
