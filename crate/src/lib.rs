@@ -1,4 +1,6 @@
 use wasm_bindgen::prelude::*;
+use crate::model::{Op, EvalResult, Expression};
+use serde::Serialize;
 
 mod interpreter;
 mod methods;
@@ -26,3 +28,61 @@ pub fn evaluate(input: String) -> JsValue {
         Err(err) => JsValue::from_str(&err),
     }
 }
+
+/// Parse `input` into an AST, evaluate it fully, then serialize the resulting `EvaluatedAst` as JSON.
+#[wasm_bindgen]
+pub fn process(input: String) -> JsValue {
+    let ast = match parser::parse(&input) {
+        Ok(parsed) => parsed,
+        Err(err) => return JsValue::from_str(&err),
+    };
+
+
+   JsValue::from_serde(&explore(ast)).expect("serialize")
+}
+
+fn explore(expr: Expression) -> EvaluatedAst {
+    let value = interpreter::EvalContext::default().evaluate(expr.clone());
+    let op = expr.op();
+    let children = match expr {
+        Expression::Or(a, b) => vec![explore(*a), explore(*b)],
+        Expression::And(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Eq(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Neq(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Lt(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Lte(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Gte(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Gt(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Add(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Sub(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Mul(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Div(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Mod(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Neg(a) => vec![explore(*a)],
+        Expression::Not(a) => vec![explore(*a)],
+        Expression::Member(a, _) => vec![explore(*a)],
+        Expression::Method(a, _, args) => {
+            let mut cs = vec![explore(*a)];
+            for arg in args {
+                cs.push(explore(arg));
+            }
+            cs
+        }
+        Expression::Lit(_) => vec![],
+        Expression::Binding(_) => vec![],
+    };
+
+    EvaluatedAst {
+        op,
+        value,
+        children,
+    }
+}
+
+#[derive(Serialize)]
+pub struct EvaluatedAst {
+    op: Op,
+    value: EvalResult,
+    children: Vec<EvaluatedAst>,
+}
+

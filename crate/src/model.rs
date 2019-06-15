@@ -25,6 +25,32 @@ pub enum Expression {
     Binding(Identifier),
 }
 
+impl Expression {
+    pub fn op(&self) -> Op {
+        match *self {
+            Expression::Or(_, _) => Op::Or,
+            Expression::And(_, _) => Op::And,
+            Expression::Eq(_, _) => Op::Eq,
+            Expression::Neq(_, _) => Op::Neq,
+            Expression::Lt(_, _) => Op::Lt,
+            Expression::Lte(_, _) => Op::Lte,
+            Expression::Gte(_, _) => Op::Gte,
+            Expression::Gt(_, _) => Op::Gt,
+            Expression::Add(_, _) => Op::Plus,
+            Expression::Sub(_, _) => Op::Minus,
+            Expression::Mul(_, _) => Op::Times,
+            Expression::Div(_, _) => Op::Div,
+            Expression::Mod(_, _) => Op::Mod,
+            Expression::Neg(_) => Op::Neg,
+            Expression::Not(_) => Op::Not,
+            Expression::Member(_, _) => Op::Member,
+            Expression::Method(_, _, _) => Op::Method,
+            Expression::Lit(_) => Op::Lit,
+            Expression::Binding(_) => Op::Bind,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
 pub enum Kind {
     I64,
@@ -54,6 +80,10 @@ pub enum Op {
     Lt,
     Gt,
     Gte,
+    Lit,
+    Bind,
+    Member,
+    Method,
 }
 
 impl Value {
@@ -95,7 +125,7 @@ pub enum Value {
     Null,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Serialize)]
 pub enum Error {
     Unknown(String),
     NoMethod(Identifier),
