@@ -4,8 +4,8 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Expression {
-    Or(Box<Expression>, Box<Expression>),
-    And(Box<Expression>, Box<Expression>),
+    Or(Vec<Expression>),
+    And(Vec<Expression>),
     Eq(Box<Expression>, Box<Expression>),
     Neq(Box<Expression>, Box<Expression>),
     Lt(Box<Expression>, Box<Expression>),
@@ -28,8 +28,8 @@ pub enum Expression {
 impl Expression {
     pub fn op(&self) -> Op {
         match self {
-            Expression::Or(_, _) => Op::Or,
-            Expression::And(_, _) => Op::And,
+            Expression::Or(_) => Op::Or,
+            Expression::And(_) => Op::And,
             Expression::Eq(_, _) => Op::Eq,
             Expression::Neq(_, _) => Op::Neq,
             Expression::Lt(_, _) => Op::Lt,

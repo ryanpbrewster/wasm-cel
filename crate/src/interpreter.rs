@@ -22,37 +22,37 @@ impl EvalContext {
                 Value::Bool(x) => Ok(Value::Bool(!x)),
                 other => Err(Error::InvalidTypeForOperator(other.kind(), Op::Not)),
             },
-            Expression::Or(a, b) => {
-                let a = match self.evaluate(*a) {
-                    Ok(Value::Bool(true)) => return Ok(Value::Bool(true)),
-                    other => other,
-                };
-                let b = match self.evaluate(*b) {
-                    Ok(Value::Bool(true)) => return Ok(Value::Bool(true)),
-                    other => other,
-                };
-                let a = a?;
-                let b = b?;
-                match (a, b) {
-                    (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a || b)),
-                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Or)),
+            Expression::Or(children) => {
+                let mut vs = Vec::new();
+                for child in children {
+                    match self.evaluate(child) {
+                        Ok(Value::Bool(true)) => return Ok(Value::Bool(true)),
+                        other => vs.push(other),
+                    };
                 }
+                for v in vs {
+                    match v? {
+                        Value::Bool(b) => assert!(!b),
+                        other => return Err(Error::InvalidTypeForOperator(other.kind(), Op::Or)),
+                    };
+                }
+                Ok(Value::Bool(false))
             }
-            Expression::And(a, b) => {
-                let a = match self.evaluate(*a) {
-                    Ok(Value::Bool(false)) => return Ok(Value::Bool(false)),
-                    other => other,
-                };
-                let b = match self.evaluate(*b) {
-                    Ok(Value::Bool(false)) => return Ok(Value::Bool(false)),
-                    other => other,
-                };
-                let a = a?;
-                let b = b?;
-                match (a, b) {
-                    (Value::Bool(a), Value::Bool(b)) => Ok(Value::Bool(a && b)),
-                    (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::And)),
+            Expression::And(children) => {
+                let mut vs = Vec::new();
+                for child in children {
+                    match self.evaluate(child) {
+                        Ok(Value::Bool(false)) => return Ok(Value::Bool(false)),
+                        other => vs.push(other),
+                    };
                 }
+                for v in vs {
+                    match v? {
+                        Value::Bool(b) => assert!(b),
+                        other => return Err(Error::InvalidTypeForOperator(other.kind(), Op::Or)),
+                    };
+                }
+                Ok(Value::Bool(true))
             }
             Expression::Eq(a, b) => {
                 let a = self.evaluate(*a)?;

@@ -32,8 +32,8 @@ fn explore(expr: Expression) -> EvaluatedAst {
     let value = interpreter::EvalContext::default().evaluate(expr.clone());
     let op = expr.op();
     let children = match expr {
-        Expression::Or(a, b) => vec![explore(*a), explore(*b)],
-        Expression::And(a, b) => vec![explore(*a), explore(*b)],
+        Expression::Or(cs) => cs.into_iter().map(|c| explore(c)).collect(),
+        Expression::And(cs) => cs.into_iter().map(|c| explore(c)).collect(),
         Expression::Eq(a, b) => vec![explore(*a), explore(*b)],
         Expression::Neq(a, b) => vec![explore(*a), explore(*b)],
         Expression::Lt(a, b) => vec![explore(*a), explore(*b)],

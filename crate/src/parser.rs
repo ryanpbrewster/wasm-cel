@@ -23,22 +23,22 @@ fn extract_expression(pair: Pair<Rule>) -> Expression {
 
 fn extract_disjunction(pair: Pair<Rule>) -> Expression {
     assert_eq!(pair.as_rule(), Rule::Disjunction);
-    let mut pairs = pair.into_inner();
-    let mut a = extract_conjunction(pairs.next().unwrap());
-    while let Some(b) = pairs.next() {
-        a = Expression::Or(Box::new(a), Box::new(extract_conjunction(b)));
+    let mut exprs: Vec<Expression> = pair.into_inner().map(extract_conjunction).collect();
+    if exprs.len() == 1 {
+        exprs.swap_remove(0)
+    } else {
+        Expression::Or(exprs)
     }
-    a
 }
 
 fn extract_conjunction(pair: Pair<Rule>) -> Expression {
     assert_eq!(pair.as_rule(), Rule::Conjunction);
-    let mut pairs = pair.into_inner();
-    let mut a = extract_relation(pairs.next().unwrap());
-    while let Some(b) = pairs.next() {
-        a = Expression::And(Box::new(a), Box::new(extract_relation(b)));
+    let mut exprs: Vec<Expression> = pair.into_inner().map(extract_relation).collect();
+    if exprs.len() == 1 {
+        exprs.swap_remove(0)
+    } else {
+        Expression::And(exprs)
     }
-    a
 }
 
 fn extract_relation(pair: Pair<Rule>) -> Expression {
@@ -329,10 +329,10 @@ mod test {
             parse(input),
             Ok(Expression::Lit(Literal::List(vec![
                 Expression::Lit(Literal::I64(0)),
-                Expression::Or(
-                    Box::new(Expression::Lit(Literal::Bool(false))),
-                    Box::new(Expression::Lit(Literal::Bool(true))),
-                )
+                Expression::Or(vec![
+                    Expression::Lit(Literal::Bool(false)),
+                    Expression::Lit(Literal::Bool(true)),
+                ])
             ])))
         );
     }
