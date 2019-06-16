@@ -1,26 +1,4 @@
 const KEY_CODE_ENTER = 13;
-const DEFAULT_TREE_DATA = {
-    "op": "PLUS",
-    "value": "14",
-    "children": [
-      { 
-        "op": "TIMES",
-        "value": "2",
-        "children": [
-          { "value": "1" },
-          { "value": "2" }
-        ]
-      },
-      { 
-        "op": "TIMES",
-        "value": "12",
-        "children": [
-          { "value": "3" },
-          { "value": "4" }
-        ]
-      },
-    ]
-  };
 
 window.onload = function() {
   const dom = {
@@ -29,7 +7,6 @@ window.onload = function() {
   };
 
   import("../crate/pkg").then(module => {
-    console.log("loaded module");
     dom.input.addEventListener("keypress", (evt) => {
       if (evt.keyCode !== KEY_CODE_ENTER) {
         return;
@@ -54,9 +31,7 @@ window.onload = function() {
         width = 960 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
 
-    // append the svg object to the "graph" div
-    // appends a 'group' element to 'svg'
-    // moves the 'group' element to the top left margin
+    d3.select("#graph").select("svg").remove();
     var svg = d3.select("#graph").append("svg")
         .attr("width", width + margin.right + margin.left)
         .attr("height", height + margin.top + margin.bottom)
@@ -75,9 +50,6 @@ window.onload = function() {
     root = d3.hierarchy(treeData, function(d) { return d.children; });
     root.x0 = height / 2;
     root.y0 = 0;
-
-    // Collapse after the second level
-    root.children.forEach(collapse);
 
     update(root);
 
@@ -117,11 +89,7 @@ window.onload = function() {
 
       // Add Circle for the nodes
       nodeEnter.append('circle')
-          .attr('class', 'node')
-          .attr('r', "55px")
-          .style("fill", function(d) {
-              return d._children ? "lightsteelblue" : "#fff";
-          });
+          .attr('class', 'node');
 
       // Add labels for the nodes
       nodeEnter.append('text')
@@ -147,12 +115,22 @@ window.onload = function() {
       nodeUpdate.select('circle.node')
         .attr('r', 10)
         .style("fill", function(d) {
-            return d._children ? "lightsteelblue" : "#fff";
+            const color = d.data.value["Err"] ? "red" : "blue";
+            if (d.children) {
+              // Expanded parents are dark
+              return "dark" + color;
+            }
+            if (d._children) {
+              // Collapsed parents are bright
+              return color;
+            }
+            // primitives are light
+            return "light" + color;
         })
         .attr('cursor', 'pointer');
 
       nodeUpdate.select('text')
-         .text((d) => d.children ? d.data.op : JSON.stringify(d.data.value));
+         .text((d) => d.children ? extractOp(d.data.op) : extractValue(d.data.value));
 
 
       // Remove any exiting nodes
@@ -228,9 +206,30 @@ window.onload = function() {
           d.children = d._children;
           d._children = null;
         }
-        console.log(`node @ (${d.x}, ${d.y}) is now a ${d.children ? "parent" : "leaf"}`);
         update(d);
       }
     }
   }
 };
+
+function extractValue(value) {
+  const ok = value["Ok"];
+  if (!ok) {
+    return JSON.stringify(value["Err"]);
+  }
+
+  for (const key of Object.keys(ok)) {
+    return JSON.stringify(ok[key]);
+  }
+}
+
+function extractOp(op) {
+  switch (op.t) {
+    case "Member":
+      return `.${op.c}`;
+    case "Method":
+      return `.${op.c}()`;
+    default:
+      return op.t;
+  }
+}

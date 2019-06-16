@@ -1,6 +1,6 @@
-use wasm_bindgen::prelude::*;
-use crate::model::{Op, EvalResult, Expression};
+use crate::model::{EvalResult, Expression, Op, Value};
 use serde::Serialize;
+use wasm_bindgen::prelude::*;
 
 mod interpreter;
 mod methods;
@@ -37,8 +37,7 @@ pub fn process(input: String) -> JsValue {
         Err(err) => return JsValue::from_str(&err),
     };
 
-
-   JsValue::from_serde(&explore(ast)).expect("serialize")
+    JsValue::from_serde(&explore(ast)).expect("serialize")
 }
 
 fn explore(expr: Expression) -> EvaluatedAst {
@@ -69,7 +68,11 @@ fn explore(expr: Expression) -> EvaluatedAst {
             cs
         }
         Expression::Lit(_) => vec![],
-        Expression::Binding(_) => vec![],
+        Expression::Binding(id) => vec![EvaluatedAst {
+            op: Op::Lookup,
+            value: Ok(Value::String(id.0)),
+            children: vec![],
+        }],
     };
 
     EvaluatedAst {
@@ -85,4 +88,3 @@ pub struct EvaluatedAst {
     value: EvalResult,
     children: Vec<EvaluatedAst>,
 }
-

@@ -27,7 +27,7 @@ pub enum Expression {
 
 impl Expression {
     pub fn op(&self) -> Op {
-        match *self {
+        match self {
             Expression::Or(_, _) => Op::Or,
             Expression::And(_, _) => Op::And,
             Expression::Eq(_, _) => Op::Eq,
@@ -43,10 +43,10 @@ impl Expression {
             Expression::Mod(_, _) => Op::Mod,
             Expression::Neg(_) => Op::Neg,
             Expression::Not(_) => Op::Not,
-            Expression::Member(_, _) => Op::Member,
-            Expression::Method(_, _, _) => Op::Method,
+            Expression::Member(_, id) => Op::Member(id.clone()),
+            Expression::Method(_, id, _) => Op::Method(id.clone()),
             Expression::Lit(_) => Op::Lit,
-            Expression::Binding(_) => Op::Bind,
+            Expression::Binding(_) => Op::Lookup,
         }
     }
 }
@@ -63,7 +63,8 @@ pub enum Kind {
     Null,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+#[serde(tag = "t", content = "c")]
 pub enum Op {
     Not,
     Neg,
@@ -81,9 +82,9 @@ pub enum Op {
     Gt,
     Gte,
     Lit,
-    Bind,
-    Member,
-    Method,
+    Lookup,
+    Member(Identifier),
+    Method(Identifier),
 }
 
 impl Value {
@@ -125,7 +126,7 @@ pub enum Value {
     Null,
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize)]
+#[derive(Debug, Eq, PartialEq, Serialize, Clone)]
 pub enum Error {
     Unknown(String),
     NoMethod(Identifier),
