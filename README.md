@@ -1,12 +1,23 @@
-# Collatz sequence operations using WebAssembly
+# CEL parser + evaluator
+
+* Q: What is CEL?
+* A: https://github.com/google/cel-spec
+
+* Q: What is this?
+* A: A parser and evaluator for CEL, written in Rust, compiled to Web Assembly, and deployed into a browser environment.
+
+* Q: How do I use it?
+* A: `npm run start` and visit `localhost:8080` in your browser.
+
+## Web Assembly
 
 Built using the template at https://github.com/rustwasm/rust-webpack-template.
 
-# Special instructions
+### Special instructions
 
 I had to `apt-get install` a few packages:`libssl-dev` and `pkg-config`.
 
-# Publishing
+## Publishing
 
 This is hosted via Firebase Hosting.
 
