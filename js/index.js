@@ -119,15 +119,15 @@ window.onload = function() {
         .style("fill", function(d) {
             const color = d.data.value["Err"] ? "red" : "blue";
             if (d.children) {
-              // Expanded parents are dark
-              return "dark" + color;
+              // Expanded parents are light
+              return "light" + color;
             }
             if (d._children) {
               // Collapsed parents are bright
-              return color;
+              return "dark" + color;
             }
-            // primitives are light
-            return "light" + color;
+            // primitives are plain white
+            return "white";
         })
         .attr('cursor', 'pointer');
 
