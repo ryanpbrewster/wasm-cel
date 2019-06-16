@@ -180,10 +180,15 @@ impl EvalContext {
             },
             Expression::Member(e, name) => {
                 let e = self.evaluate(*e)?;
-                Err(Error::Unknown(format!(
-                    "method {:?} not implemented on {:?}",
-                    name, e
-                )))
+                match e {
+                    Value::Map(mut fields) => {
+                        Ok(fields.remove(&name.0).ok_or(Error::NoSuchMember(name))?)
+                    }
+                    other => Err(Error::InvalidTypeForOperator(
+                        other.kind(),
+                        Op::Member(name),
+                    )),
+                }
             }
             Expression::Method(e, name, args) => {
                 let e = self.evaluate(*e)?;
@@ -511,5 +516,32 @@ mod test {
     fn map_duplicate_keys() {
         let input = r#" { "a": 0, "a": 1 }.len() "#;
         assert_eq!(evaluate(input), Err(Error::DuplicateMapKey("a".to_owned())));
+    }
+
+    #[test]
+    fn map_member_present() {
+        let input = r#" { "a": 0, "b": 1 }.a "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(0)));
+    }
+
+    #[test]
+    fn map_member_missing() {
+        let input = r#" { "a": 0, "b": 1 }.c "#;
+        assert_eq!(
+            evaluate(input),
+            Err(Error::NoSuchMember(Identifier::new("c")))
+        );
+    }
+
+    #[test]
+    fn non_map_member() {
+        let input = r#" 42.a "#;
+        assert_eq!(
+            evaluate(input),
+            Err(Error::InvalidTypeForOperator(
+                Kind::I64,
+                Op::Member(Identifier::new("a"))
+            ))
+        );
     }
 }

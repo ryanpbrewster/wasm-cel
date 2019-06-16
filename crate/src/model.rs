@@ -128,7 +128,6 @@ pub enum Value {
 
 #[derive(Debug, Eq, PartialEq, Serialize, Clone)]
 pub enum Error {
-    Unknown(String),
     NoMethod(Identifier),
     NoMethodOnType(Kind, Identifier),
     NoMethodWithSignature(Kind, Identifier, Vec<Kind>),
@@ -136,6 +135,7 @@ pub enum Error {
     InvalidTypesForOperator(Kind, Kind, Op),
     DivisionByZero,
     NoSuchBinding(Identifier),
+    NoSuchMember(Identifier),
     InvalidMapKey(Kind),
     DuplicateMapKey(String),
 }
