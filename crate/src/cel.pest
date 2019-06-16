@@ -1,8 +1,8 @@
 Expression = { SOI ~ Disjunction ~ EOI }
-Disjunction = { Conjunction ~ ("||" ~ Conjunction)? }
-Conjunction = { Relation ~ ("&&" ~ Relation)? }
-Relation = { Addition ~ (RelOp ~ Addition)? }
-RelOp = { "==" | "!=" | "<" | "<=" | ">" | ">=" }
+Disjunction = { Conjunction ~ ("||" ~ Conjunction)* }
+Conjunction = { Relation ~ ("&&" ~ Relation)* }
+Relation = { Addition ~ (RelOp ~ Addition)* }
+RelOp = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
 Addition = { Multiplication ~ (AddOp ~ Multiplication)* }
 AddOp = { "+" | "-" }
 Multiplication = { Unary ~ (MulOp ~ Unary)* }

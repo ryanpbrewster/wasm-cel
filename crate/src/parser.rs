@@ -420,4 +420,19 @@ mod test {
         assert_valid(r#" foo "#);
         assert_valid(r#" foo.bar.baz "#);
     }
+
+    #[test]
+    fn multi_conjunction() {
+        assert_valid(r#" true && true && true && true "#);
+    }
+
+    #[test]
+    fn multi_disjunction() {
+        assert_valid(r#" true || true || true || true "#);
+    }
+
+    #[test]
+    fn relations() {
+        assert_valid(r#" 0 < 1 && 1 <= 2 && 3 == 3 && 4 >= 3 && 4 > 3 && 0 != 0 "#);
+    }
 }

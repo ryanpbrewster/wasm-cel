@@ -3,7 +3,7 @@ const KEY_CODE_ENTER = 13;
 window.onload = function() {
   const dom = {
     input: document.getElementById("input"),
-    output: document.getElementById("output"),
+    ast: document.getElementById("ast"),
   };
 
   import("../crate/pkg").then(module => {
@@ -17,8 +17,10 @@ window.onload = function() {
         evt.preventDefault();
         const input = dom.input.value;
 
+        const ast = module.parse_to_ast(input);
+        dom.ast.textContent = JSON.stringify(ast, null, 2);
+
         const output = module.process(input);
-        dom.output.textContent = JSON.stringify(output, null, 2);
         constructD3Ast(output);
       }
     });

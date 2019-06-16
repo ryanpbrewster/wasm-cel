@@ -17,18 +17,6 @@ pub fn parse_to_ast(input: String) -> JsValue {
     }
 }
 
-/// Parse `input` into an AST, then serialize it as JSON.
-#[wasm_bindgen]
-pub fn evaluate(input: String) -> JsValue {
-    match parser::parse(&input) {
-        Ok(parsed) => match interpreter::EvalContext::default().evaluate(parsed) {
-            Ok(value) => JsValue::from_serde(&value).expect("serialize"),
-            Err(err) => JsValue::from_str(&format!("{:?}", err)),
-        },
-        Err(err) => JsValue::from_str(&err),
-    }
-}
-
 /// Parse `input` into an AST, evaluate it fully, then serialize the resulting `EvaluatedAst` as JSON.
 #[wasm_bindgen]
 pub fn process(input: String) -> JsValue {
