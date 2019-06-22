@@ -1,6 +1,7 @@
 use crate::model::{Error, EvalResult, Identifier, Kind, Value};
 
 const METHOD_CONTAINS: &str = "contains";
+const METHOD_KEYS: &str = "keys";
 const METHOD_LEN: &str = "len";
 const METHOD_POW: &str = "pow";
 
@@ -11,6 +12,7 @@ fn arg_kinds(args: Vec<Value>) -> Vec<Kind> {
 pub fn evaluate_method(method: Identifier, operand: Value, args: Vec<Value>) -> EvalResult {
     match method.0.as_ref() {
         METHOD_CONTAINS => evaluate_method_contains(operand, args),
+        METHOD_KEYS => evaluate_method_keys(operand, args),
         METHOD_LEN => evaluate_method_len(operand, args),
         METHOD_POW => evaluate_method_pow(operand, args),
         _ => Err(Error::NoMethod(method)),
@@ -31,6 +33,29 @@ fn evaluate_method_contains(operand: Value, args: Vec<Value>) -> EvalResult {
         other => Err(Error::NoMethodOnType(
             other.kind(),
             Identifier::new(METHOD_CONTAINS),
+        )),
+    }
+}
+
+fn evaluate_method_keys(operand: Value, args: Vec<Value>) -> EvalResult {
+    if args.len() != 0 {
+        return Err(Error::NoMethodWithSignature(
+            operand.kind(),
+            Identifier::new(METHOD_KEYS),
+            arg_kinds(args),
+        ));
+    }
+    match operand {
+        Value::Map(fields) => {
+            let mut keys: Vec<String> = fields.keys().cloned().collect();
+            keys.sort();
+            Ok(Value::List(
+                keys.into_iter().map(|s| Value::String(s)).collect(),
+            ))
+        }
+        other => Err(Error::NoMethodOnType(
+            other.kind(),
+            Identifier::new(METHOD_LEN),
         )),
     }
 }

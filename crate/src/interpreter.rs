@@ -362,6 +362,24 @@ mod test {
     }
 
     #[test]
+    fn map_len() {
+        let input = r#" { "a": 1, "b": 2 }.len() "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(2)));
+    }
+
+    #[test]
+    fn map_keys() {
+        let input = r#" { "a": 1, "b": 2 }.keys() "#;
+        assert_eq!(
+            evaluate(input),
+            Ok(Value::List(vec![
+                Value::String("a".to_owned()),
+                Value::String("b".to_owned())
+            ]))
+        );
+    }
+
+    #[test]
     fn list_contains_true() {
         let input = r#" ["a", 3, false].contains(3) "#;
         assert_eq!(evaluate(input), Ok(Value::Bool(true)));
