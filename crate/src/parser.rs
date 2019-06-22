@@ -204,8 +204,8 @@ fn extract_literal(pair: Pair<Rule>) -> Literal {
     match pair.as_rule() {
         Rule::StringLiteral => Literal::String(extract_string(pair)),
         Rule::BytesLiteral => Literal::Bytes(extract_bytes(pair)),
-        Rule::FloatLiteral => Literal::F64(pair.as_str().parse().unwrap()),
-        Rule::IntLiteral => Literal::I64(pair.as_str().parse().unwrap()),
+        Rule::FloatLiteral => Literal::F64(pair.as_str().replace("_", "").parse().unwrap()),
+        Rule::IntLiteral => Literal::I64(pair.as_str().replace("_", "").parse().unwrap()),
         Rule::ListLiteral => extract_list(pair),
         Rule::MapLiteral => extract_map(pair),
         Rule::BoolLiteral => Literal::Bool(pair.as_str().parse().unwrap()),
@@ -323,10 +323,12 @@ mod test {
     }
 
     #[test]
-    fn valid_floats() {
+    fn float_literals() {
         assert_valid("3.1415926");
+        assert_valid("1_024__.1_4_1_5_____");
         assert_invalid(".1415926");
         assert_invalid("3.");
+        assert_invalid("3._0");
     }
 
     #[test]
@@ -338,6 +340,7 @@ mod test {
     fn int_literals() {
         assert_valid("1");
         assert_valid("31415");
+        assert_valid("1_000_000_000");
     }
 
     #[test]
