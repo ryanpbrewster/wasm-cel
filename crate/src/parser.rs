@@ -335,6 +335,18 @@ mod test {
     }
 
     #[test]
+    fn int_literals() {
+        assert_valid("1");
+        assert_valid("31415");
+    }
+
+    #[test]
+    #[should_panic] // TODO: return an error instead of panicking
+    fn int_literal_overflow() {
+        let _ = parse("9999999999999999999999999");
+    }
+
+    #[test]
     fn cel_smoke() {
         let input = "22 * (4 + 15)";
         assert_eq!(
