@@ -43,7 +43,7 @@ window.onload = function() {
   function constructD3Ast(treeData) {
     // Set the dimensions and margins of the diagram
     var margin = {top: 20, right: 90, bottom: 30, left: 90},
-        width = 960 - margin.left - margin.right,
+        width = 1200 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
 
     d3.select("#graph").select("svg").remove();

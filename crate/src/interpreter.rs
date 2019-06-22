@@ -63,17 +63,11 @@ impl EvalContext {
             Expression::Eq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                if a.kind() != b.kind() {
-                    return Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Eq));
-                }
                 Ok(Value::Bool(a == b))
             }
             Expression::Neq(a, b) => {
                 let a = self.evaluate(*a)?;
                 let b = self.evaluate(*b)?;
-                if a.kind() != b.kind() {
-                    return Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Neq));
-                }
                 Ok(Value::Bool(a != b))
             }
             Expression::Lt(a, b) => {
@@ -468,14 +462,7 @@ mod test {
     #[test]
     fn eq_mismatched_types() {
         let input = r#" 1 == false "#;
-        assert_eq!(
-            evaluate(input),
-            Err(Error::InvalidTypesForOperator(
-                Kind::I64,
-                Kind::Bool,
-                Op::Eq
-            ))
-        );
+        assert_eq!(evaluate(input), Ok(Value::Bool(false)));
     }
 
     #[test]
@@ -487,14 +474,7 @@ mod test {
     #[test]
     fn neq_mismatched_types() {
         let input = r#" 1 != false "#;
-        assert_eq!(
-            evaluate(input),
-            Err(Error::InvalidTypesForOperator(
-                Kind::I64,
-                Kind::Bool,
-                Op::Neq
-            ))
-        );
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
     }
 
     #[test]
