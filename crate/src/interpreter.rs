@@ -4,14 +4,20 @@ use crate::methods;
 use crate::model::{Error, EvalResult, Expression, Identifier, Literal, Op, Value};
 use std::cmp::Ordering;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct EvalContext {
-    bindings: HashMap<Identifier, Value>,
+    pub bindings: HashMap<Identifier, EvalResult>,
 }
 
 impl EvalContext {
     pub fn evaluate(&self, expr: Expression) -> EvalResult {
         match expr {
+            Expression::LetBinding { id, value, body } => {
+                let value = self.evaluate(*value);
+                let mut child_scope = self.clone();
+                child_scope.bindings.insert(id, value);
+                child_scope.evaluate(*body)
+            }
             Expression::Lit(lit) => self.evaluate_literal(lit),
             Expression::Neg(e) => match self.evaluate(*e)? {
                 Value::I64(x) => Ok(Value::I64(-x)),
@@ -175,7 +181,7 @@ impl EvalContext {
                 }
             }
             Expression::Binding(name) => match self.bindings.get(&name) {
-                Some(value) => Ok(value.clone()),
+                Some(value) => value.clone(),
                 None => Err(Error::NoSuchBinding(name)),
             },
             Expression::Member(e, name) => {
@@ -543,5 +549,23 @@ mod test {
                 Op::Member(Identifier::new("a"))
             ))
         );
+    }
+
+    #[test]
+    fn let_binding_smoke() {
+        let input = r#" let x = 42; x "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(42)));
+    }
+
+    #[test]
+    fn let_binding_error() {
+        let input = r#" let x = 1 / 0; x == 4 || true "#;
+        assert_eq!(evaluate(input), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn let_rebinding() {
+        let input = r#" let x = 42; let x = x + x; x "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(42 + 42)));
     }
 }

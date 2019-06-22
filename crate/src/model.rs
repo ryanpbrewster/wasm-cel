@@ -4,6 +4,11 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum Expression {
+    LetBinding {
+        id: Identifier,
+        value: Box<Expression>,
+        body: Box<Expression>,
+    },
     Or(Vec<Expression>),
     And(Vec<Expression>),
     Eq(Box<Expression>, Box<Expression>),
@@ -28,6 +33,7 @@ pub enum Expression {
 impl Expression {
     pub fn op(&self) -> Op {
         match self {
+            Expression::LetBinding { .. } => Op::LetBinding,
             Expression::Or(_) => Op::Or,
             Expression::And(_) => Op::And,
             Expression::Eq(_, _) => Op::Eq,
@@ -85,6 +91,7 @@ pub enum Op {
     Lookup,
     Member(Identifier),
     Method(Identifier),
+    LetBinding,
 }
 
 impl Value {

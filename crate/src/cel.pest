@@ -1,4 +1,5 @@
-Expression = { SOI ~ Disjunction ~ EOI }
+Expression = { SOI ~ LetBinding* ~ Disjunction ~ EOI }
+LetBinding = { "let" ~ Identifier ~ "=" ~ Disjunction ~ ";" }
 Disjunction = { Conjunction ~ ("||" ~ Conjunction)* }
 Conjunction = { Relation ~ ("&&" ~ Relation)* }
 Relation = { Addition ~ (RelOp ~ Addition)* }

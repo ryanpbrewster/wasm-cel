@@ -18,7 +18,34 @@ pub fn parse(input: &str) -> Result<Expression, String> {
 
 fn extract_expression(pair: Pair<Rule>) -> Expression {
     assert_eq!(pair.as_rule(), Rule::Expression);
-    extract_disjunction(pair.into_inner().next().unwrap())
+    let mut pairs = pair.into_inner();
+
+    let mut bindings = vec![];
+    let body = loop {
+        let p = pairs.next().unwrap();
+        match p.as_rule() {
+            Rule::LetBinding => {
+                bindings.push(extract_binding(p));
+            }
+            _ => break extract_disjunction(p),
+        }
+    };
+
+    bindings
+        .into_iter()
+        .rfold(body, |expr, (id, value)| Expression::LetBinding {
+            id,
+            value: Box::new(value),
+            body: Box::new(expr),
+        })
+}
+
+fn extract_binding(pair: Pair<Rule>) -> (Identifier, Expression) {
+    assert_eq!(pair.as_rule(), Rule::LetBinding);
+    let mut pairs = pair.into_inner();
+    let id = extract_identifier(pairs.next().unwrap());
+    let value = extract_disjunction(pairs.next().unwrap());
+    (id, value)
 }
 
 fn extract_disjunction(pair: Pair<Rule>) -> Expression {
@@ -434,5 +461,20 @@ mod test {
     #[test]
     fn relations() {
         assert_valid(r#" 0 < 1 && 1 <= 2 && 3 == 3 && 4 >= 3 && 4 > 3 && 0 != 0 "#);
+    }
+
+    #[test]
+    fn let_binding_smoke() {
+        assert_valid(r#" let x = 42; x "#);
+    }
+
+    #[test]
+    fn let_binding_no_expression() {
+        assert_invalid(r#" let x = 42; "#);
+    }
+
+    #[test]
+    fn let_rebinding() {
+        assert_valid(r#" let x = 42; let x = x*x; x "#);
     }
 }
