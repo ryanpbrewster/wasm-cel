@@ -26,9 +26,14 @@ HexSequence = @{ "x" ~ ASCII_HEX_DIGIT{2} }
 UnicodeSequence = @{ "u" ~ ASCII_HEX_DIGIT{4} }
 FloatLiteral = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 IntLiteral = @{ ASCII_DIGIT+ }
-ListLiteral = { "[" ~ Disjunction ~ ("," ~ Disjunction)* ~ "]" }
-MapLiteral = { "{" ~ MapField ~ ("," ~ MapField)* ~ "}" }
+
+ListLiteral = { "[" ~ ExpressionList? ~ "]" }
+ExpressionList = _{ Disjunction ~ ("," ~ Disjunction)* ~ ","? }
+
+MapLiteral = { "{" ~ MapFields? ~ "}" }
+MapFields = _{ MapField ~ ("," ~ MapField)* ~ ","? }
 MapField = { Disjunction ~ ":" ~ Disjunction }
+
 BoolLiteral = @{ "false" | "true" }
 NullLiteral = @{ "null" }
 Identifier = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }

@@ -31,19 +31,22 @@
 
 <body>
 <textarea id="input" autofocus>
-let userId = "ryan";
+let userId = "alice";
+
 let request = {
-  "time": 0,
-  "auth": { "uid": userId },
-  "resource": null
+  "auth": { "uid": "alice" },
+  "resource": {
+    "data": {
+      "files": 12,
+      "status": "old"
+    }
+  }
 };
 
 request.auth != null
   && request.auth.uid == userId
-  && request.resource.data.keys().hasOnly(["files", "status"])
-  && request.resource.data.status == "new"
-  && resource.data.lease.expiration < request.time.toMillis()
-</textarea>
+  && request.resource.data.keys() == ["files", "status"]
+  && request.resource.data.status == "new"</textarea>
 
 <div id="graph"></div>
 <hr>

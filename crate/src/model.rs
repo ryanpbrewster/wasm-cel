@@ -122,6 +122,7 @@ pub enum Literal {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
+#[serde(tag = "t", content = "c")]
 pub enum Value {
     I64(i64),
     F64(f64),

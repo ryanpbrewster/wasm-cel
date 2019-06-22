@@ -130,7 +130,7 @@ window.onload = function() {
       nodeUpdate.select('circle.node')
         .attr('r', 10)
         .style("fill", function(d) {
-            const color = d.data.value["Err"] ? "red" : "blue";
+            const color = d.data.result["Err"] ? "red" : "blue";
             if (d.children) {
               // Expanded parents are light
               return "light" + color;
@@ -145,7 +145,7 @@ window.onload = function() {
         .attr('cursor', 'pointer');
 
       nodeUpdate.select('text')
-         .text((d) => d.children ? extractOp(d.data.op) : extractValue(d.data.value));
+         .text((d) => d.children ? extractOp(d.data.op) : extractResult(d.data.result));
 
 
       // Remove any exiting nodes
@@ -227,14 +227,31 @@ window.onload = function() {
   }
 };
 
-function extractValue(value) {
-  const ok = value["Ok"];
+function extractResult(result) {
+  const ok = result["Ok"];
   if (!ok) {
-    return JSON.stringify(value["Err"]);
+    return JSON.stringify(result["Err"]);
   }
+  return extractValue(ok);
+}
 
-  for (const key of Object.keys(ok)) {
-    return JSON.stringify(ok[key]);
+function extractValue(ok) {
+  console.log(ok);
+  switch (ok["t"]) {
+  case "List":
+    return "[" + ok["c"].map(v => extractValue(v)).join(", ") + "]";
+
+  case "Map":
+    return "{" + Object.entries(ok["c"]).map(([k, v]) => `"${k}" : ${extractValue(v)}`).join(", ") + "}";
+
+  case "String":
+    return JSON.stringify(ok["c"]);
+
+  case "Null":
+    return "null";
+
+  default:
+    return JSON.stringify(ok["c"]);
   }
 }
 

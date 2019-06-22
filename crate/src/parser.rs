@@ -365,10 +365,31 @@ mod test {
     }
 
     #[test]
+    fn valid_list() {
+        assert_valid(r#" [] "#); // empty
+        assert_valid(r#" [x, y, z] "#); // bindings
+        assert_valid(r#" [ "a", "b", "c",  ] "#); // trailing comma
+        assert_valid(r#" [[[[[0]]]]] "#); // nested
+    }
+
+    #[test]
     fn valid_maps() {
         assert_valid(r#" { "foo": "bar" } "#); // string literals
         assert_valid(r#" { foo: bar } "#); // bindings
         assert_valid(r#" { a: b, c: d, e: f } "#); // multiple fields
+        assert_valid(r#" {} "#); // empty
+        assert_valid(
+            r#" {
+          "a": "b",
+          "p": "q"
+        } "#,
+        ); // multi-line
+        assert_valid(
+            r#" {
+          "a": "b",
+          "p": "q",
+        } "#,
+        ); // trailing comma
     }
 
     #[test]

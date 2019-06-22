@@ -65,14 +65,14 @@ fn explore(ctx: &EvalContext, expr: Expression) -> EvaluatedAst {
         Expression::Lit(_) => vec![],
         Expression::Binding(id) => vec![EvaluatedAst {
             op: Op::Lookup,
-            value: Ok(Value::String(id.0)),
+            result: Ok(Value::String(id.0)),
             children: vec![],
         }],
     };
 
     EvaluatedAst {
         op,
-        value,
+        result: value,
         children,
     }
 }
@@ -80,6 +80,6 @@ fn explore(ctx: &EvalContext, expr: Expression) -> EvaluatedAst {
 #[derive(Serialize)]
 pub struct EvaluatedAst {
     op: Op,
-    value: EvalResult,
+    result: EvalResult,
     children: Vec<EvaluatedAst>,
 }
