@@ -236,7 +236,6 @@ function extractResult(result) {
 }
 
 function extractValue(ok) {
-  console.log(ok);
   switch (ok["t"]) {
   case "List":
     return "[" + ok["c"].map(v => extractValue(v)).join(", ") + "]";
