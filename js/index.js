@@ -1,10 +1,23 @@
 const KEY_CODE_ENTER = 13;
+const KEY_CODE_BACKSPACE = 8;
 
 window.onload = function() {
   const dom = {
     input: document.getElementById("input"),
     ast: document.getElementById("ast"),
   };
+
+  function autosize(element) {
+    element.style.height = "auto";
+    element.style.height = element.scrollHeight + "px";
+  }
+  autosize(dom.input);
+  dom.input.addEventListener("keypress", (evt) => autosize(dom.input));
+  dom.input.addEventListener("keyup", (evt) => {
+    if (evt.keyCode === KEY_CODE_BACKSPACE) {
+      autosize(dom.input);
+    }
+  });
 
   import("../crate/pkg").then(module => {
     dom.input.addEventListener("keypress", (evt) => {
