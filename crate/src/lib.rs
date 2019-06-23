@@ -3,11 +3,11 @@ use crate::model::{EvalResult, Expression, Op, Value};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-mod interpreter;
+pub mod interpreter;
 mod methods;
-mod model;
+pub mod model;
 mod ordering;
-mod parser;
+pub mod parser;
 
 /// Parse `input` into an AST, then serialize it as JSON.
 #[wasm_bindgen]
