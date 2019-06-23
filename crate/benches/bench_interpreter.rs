@@ -5,7 +5,6 @@ extern crate wasm_cel;
 use criterion::black_box;
 use criterion::Criterion;
 use wasm_cel::interpreter;
-use wasm_cel::model::*;
 use wasm_cel::parser;
 
 fn benchmark_bindings(c: &mut Criterion) {

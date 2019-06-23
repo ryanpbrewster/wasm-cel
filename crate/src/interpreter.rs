@@ -7,20 +7,21 @@ use std::cmp::Ordering;
 #[derive(Default, Clone)]
 pub struct EvalContext<'a> {
     parent: Option<&'a EvalContext<'a>>,
-    pub bindings: HashMap<Identifier, EvalResult>,
+    pub binding: Option<(Identifier, EvalResult)>,
 }
 
 impl<'a> EvalContext<'a> {
+    pub fn with_binding(&self, name: Identifier, result: EvalResult) -> EvalContext {
+        EvalContext {
+            parent: Some(self),
+            binding: Some((name, result)),
+        }
+    }
     pub fn evaluate(&'a self, expr: Expression) -> EvalResult {
         match expr {
             Expression::LetBinding { id, value, body } => {
-                let mut new_bindings = HashMap::new();
-                new_bindings.insert(id, self.evaluate(*value));
-                let child_scope = EvalContext {
-                    parent: Some(self),
-                    bindings: new_bindings,
-                };
-                child_scope.evaluate(*body)
+                let value = self.evaluate(*value);
+                self.with_binding(id, value).evaluate(*body)
             }
             Expression::Lit(lit) => self.evaluate_literal(lit),
             Expression::Neg(e) => match self.evaluate(*e)? {
@@ -237,8 +238,10 @@ impl<'a> EvalContext<'a> {
     }
 
     fn lookup_binding(&self, name: Identifier) -> EvalResult {
-        if let Some(v) = self.bindings.get(&name) {
-            return v.clone();
+        if let Some((ref id, ref value)) = self.binding {
+            if *id == name {
+                return value.clone();
+            }
         }
         if let Some(parent) = self.parent {
             return parent.lookup_binding(name);

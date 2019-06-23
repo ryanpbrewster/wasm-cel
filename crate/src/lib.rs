@@ -35,8 +35,7 @@ fn explore(ctx: &EvalContext, expr: Expression) -> EvaluatedAst {
     let children = match expr {
         Expression::LetBinding { id, value, body } => {
             let value = ctx.evaluate(*value);
-            let mut child_ctx = ctx.clone();
-            child_ctx.bindings.insert(id, value);
+            let child_ctx = ctx.with_binding(id, value);
             return explore(&child_ctx, *body);
         }
         Expression::Or(cs) => cs.into_iter().map(|c| explore(ctx, c)).collect(),
