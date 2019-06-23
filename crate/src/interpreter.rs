@@ -5,17 +5,21 @@ use crate::model::{Error, EvalResult, Expression, Identifier, Literal, Op, Value
 use std::cmp::Ordering;
 
 #[derive(Default, Clone)]
-pub struct EvalContext {
+pub struct EvalContext<'a> {
+    parent: Option<&'a EvalContext<'a>>,
     pub bindings: HashMap<Identifier, EvalResult>,
 }
 
-impl EvalContext {
-    pub fn evaluate(&self, expr: Expression) -> EvalResult {
+impl<'a> EvalContext<'a> {
+    pub fn evaluate(&'a self, expr: Expression) -> EvalResult {
         match expr {
             Expression::LetBinding { id, value, body } => {
-                let value = self.evaluate(*value);
-                let mut child_scope = self.clone();
-                child_scope.bindings.insert(id, value);
+                let mut new_bindings = HashMap::new();
+                new_bindings.insert(id, self.evaluate(*value));
+                let child_scope = EvalContext {
+                    parent: Some(self),
+                    bindings: new_bindings,
+                };
                 child_scope.evaluate(*body)
             }
             Expression::Lit(lit) => self.evaluate_literal(lit),
@@ -174,10 +178,7 @@ impl EvalContext {
                     (a, b) => Err(Error::InvalidTypesForOperator(a.kind(), b.kind(), Op::Mod)),
                 }
             }
-            Expression::Binding(name) => match self.bindings.get(&name) {
-                Some(value) => value.clone(),
-                None => Err(Error::NoSuchBinding(name)),
-            },
+            Expression::Binding(name) => self.lookup_binding(name),
             Expression::Member(e, name) => {
                 let e = self.evaluate(*e)?;
                 match e {
@@ -233,6 +234,16 @@ impl EvalContext {
                 Ok(Value::Map(m))
             }
         }
+    }
+
+    fn lookup_binding(&self, name: Identifier) -> EvalResult {
+        if let Some(v) = self.bindings.get(&name) {
+            return v.clone();
+        }
+        if let Some(parent) = self.parent {
+            return parent.lookup_binding(name);
+        }
+        Err(Error::NoSuchBinding(name))
     }
 }
 
@@ -559,6 +570,12 @@ mod test {
     fn let_binding_error() {
         let input = r#" let x = 1 / 0; x == 4 || true "#;
         assert_eq!(evaluate(input), Ok(Value::Bool(true)));
+    }
+
+    #[test]
+    fn multiple_let_bindings() {
+        let input = r#" let a = 1; let b = 2; let c = a + b; a + b + c "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(1 + 2 + 3)));
     }
 
     #[test]
