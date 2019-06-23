@@ -5,18 +5,43 @@ use pest::Parser;
 use pest_derive::Parser;
 
 use std::convert::TryFrom;
+use std::fmt::Debug;
 
 #[derive(Parser)]
 #[grammar = "cel.pest"]
 struct CelParser;
 
-pub fn parse(input: &str) -> Result<Expression, String> {
-    let mut parsed =
-        CelParser::parse(Rule::Expression, input).map_err(|err| format!("{:?}", err))?;
-    Ok(extract_expression(parsed.next().unwrap()))
+#[derive(Debug, PartialEq)]
+pub enum ParseError {
+    Pest(String),
+    IllegalInt(String),
+    IllegalFloat(String),
 }
 
-fn extract_expression(pair: Pair<Rule>) -> Expression {
+impl<T: Debug> From<pest::error::Error<T>> for ParseError {
+    fn from(err: pest::error::Error<T>) -> Self {
+        ParseError::Pest(format!("{:?}", err))
+    }
+}
+impl From<std::num::ParseIntError> for ParseError {
+    fn from(err: std::num::ParseIntError) -> Self {
+        ParseError::IllegalInt(format!("{}", err))
+    }
+}
+impl From<std::num::ParseFloatError> for ParseError {
+    fn from(err: std::num::ParseFloatError) -> Self {
+        ParseError::IllegalFloat(format!("{}", err))
+    }
+}
+
+pub type ParseResult<T> = Result<T, ParseError>;
+
+pub fn parse(input: &str) -> ParseResult<Expression> {
+    let mut parsed = CelParser::parse(Rule::Expression, input)?;
+    extract_expression(parsed.next().unwrap())
+}
+
+fn extract_expression(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Expression);
     let mut pairs = pair.into_inner();
 
@@ -25,58 +50,64 @@ fn extract_expression(pair: Pair<Rule>) -> Expression {
         let p = pairs.next().unwrap();
         match p.as_rule() {
             Rule::LetBinding => {
-                bindings.push(extract_binding(p));
+                bindings.push(extract_binding(p)?);
             }
-            _ => break extract_disjunction(p),
+            _ => break extract_disjunction(p)?,
         }
     };
 
-    bindings
+    Ok(bindings
         .into_iter()
         .rfold(body, |expr, (id, value)| Expression::LetBinding {
             id,
             value: Box::new(value),
             body: Box::new(expr),
-        })
+        }))
 }
 
-fn extract_binding(pair: Pair<Rule>) -> (Identifier, Expression) {
+fn extract_binding(pair: Pair<Rule>) -> ParseResult<(Identifier, Expression)> {
     assert_eq!(pair.as_rule(), Rule::LetBinding);
     let mut pairs = pair.into_inner();
     let id = extract_identifier(pairs.next().unwrap());
-    let value = extract_disjunction(pairs.next().unwrap());
-    (id, value)
+    let value = extract_disjunction(pairs.next().unwrap())?;
+    Ok((id, value))
 }
 
-fn extract_disjunction(pair: Pair<Rule>) -> Expression {
+fn extract_disjunction(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Disjunction);
-    let mut exprs: Vec<Expression> = pair.into_inner().map(extract_conjunction).collect();
+    let mut exprs: Vec<Expression> = pair
+        .into_inner()
+        .map(extract_conjunction)
+        .collect::<ParseResult<_>>()?;
     if exprs.len() == 1 {
-        exprs.swap_remove(0)
+        Ok(exprs.swap_remove(0))
     } else {
-        Expression::Or(exprs)
+        Ok(Expression::Or(exprs))
     }
 }
 
-fn extract_conjunction(pair: Pair<Rule>) -> Expression {
+fn extract_conjunction(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Conjunction);
-    let mut exprs: Vec<Expression> = pair.into_inner().map(extract_relation).collect();
+    let mut exprs: Vec<Expression> = pair
+        .into_inner()
+        .map(extract_relation)
+        .collect::<ParseResult<_>>()?;
     if exprs.len() == 1 {
-        exprs.swap_remove(0)
+        Ok(exprs.swap_remove(0))
     } else {
-        Expression::And(exprs)
+        Ok(Expression::And(exprs))
     }
 }
 
-fn extract_relation(pair: Pair<Rule>) -> Expression {
+fn extract_relation(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Relation);
     let mut pairs = pair.into_inner();
-    let a = extract_addition(pairs.next().unwrap());
-    match pairs.next() {
+    let a = extract_addition(pairs.next().unwrap())?;
+    let outer = match pairs.next() {
         None => a,
         Some(op) => {
             assert_eq!(op.as_rule(), Rule::RelOp);
-            let b = extract_addition(pairs.next().unwrap());
+            let b = extract_addition(pairs.next().unwrap())?;
             match op.as_str() {
                 "==" => Expression::Eq(Box::new(a), Box::new(b)),
                 "!=" => Expression::Neq(Box::new(a), Box::new(b)),
@@ -87,32 +118,33 @@ fn extract_relation(pair: Pair<Rule>) -> Expression {
                 _ => unreachable!(),
             }
         }
-    }
+    };
+    Ok(outer)
 }
 
-fn extract_addition(pair: Pair<Rule>) -> Expression {
+fn extract_addition(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Addition);
     let mut pairs = pair.into_inner();
-    let mut a = extract_multiplication(pairs.next().unwrap());
+    let mut a = extract_multiplication(pairs.next().unwrap())?;
     while let Some(op) = pairs.next() {
         assert_eq!(op.as_rule(), Rule::AddOp);
-        let b = extract_multiplication(pairs.next().unwrap());
+        let b = extract_multiplication(pairs.next().unwrap())?;
         a = match op.as_str() {
             "+" => Expression::Add(Box::new(a), Box::new(b)),
             "-" => Expression::Sub(Box::new(a), Box::new(b)),
             _ => unreachable!(),
         }
     }
-    a
+    Ok(a)
 }
 
-fn extract_multiplication(pair: Pair<Rule>) -> Expression {
+fn extract_multiplication(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Multiplication);
     let mut pairs = pair.into_inner();
-    let mut a = extract_unary(pairs.next().unwrap());
+    let mut a = extract_unary(pairs.next().unwrap())?;
     while let Some(op) = pairs.next() {
         assert_eq!(op.as_rule(), Rule::MulOp);
-        let b = extract_unary(pairs.next().unwrap());
+        let b = extract_unary(pairs.next().unwrap())?;
         a = match op.as_str() {
             "*" => Expression::Mul(Box::new(a), Box::new(b)),
             "/" => Expression::Div(Box::new(a), Box::new(b)),
@@ -120,10 +152,10 @@ fn extract_multiplication(pair: Pair<Rule>) -> Expression {
             _ => unreachable!(),
         }
     }
-    a
+    Ok(a)
 }
 
-fn extract_unary(pair: Pair<Rule>) -> Expression {
+fn extract_unary(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Unary);
     let mut pairs = pair.into_inner();
     let a = pairs.next().unwrap();
@@ -132,8 +164,12 @@ fn extract_unary(pair: Pair<Rule>) -> Expression {
         Rule::UnaryOp => {
             assert_eq!(a.as_rule(), Rule::UnaryOp);
             match a.as_str() {
-                "-" => Expression::Neg(Box::new(extract_unary(pairs.next().unwrap()))),
-                "!" => Expression::Not(Box::new(extract_unary(pairs.next().unwrap()))),
+                "-" => Ok(Expression::Neg(Box::new(extract_unary(
+                    pairs.next().unwrap(),
+                )?))),
+                "!" => Ok(Expression::Not(Box::new(extract_unary(
+                    pairs.next().unwrap(),
+                )?))),
                 _ => unreachable!(),
             }
         }
@@ -141,15 +177,15 @@ fn extract_unary(pair: Pair<Rule>) -> Expression {
     }
 }
 
-fn extract_member(pair: Pair<Rule>) -> Expression {
+fn extract_member(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Member);
     let mut pairs = pair.into_inner();
-    let mut a = extract_operand(pairs.next().unwrap());
+    let mut a = extract_operand(pairs.next().unwrap())?;
 
     while let Some(pair) = pairs.next() {
         match pair.as_rule() {
             Rule::MethodCall => {
-                let (id, args) = extract_method_call(pair);
+                let (id, args) = extract_method_call(pair)?;
                 a = Expression::Method(Box::new(a), id, args);
             }
             Rule::MemberRef => {
@@ -160,27 +196,27 @@ fn extract_member(pair: Pair<Rule>) -> Expression {
         };
     }
 
-    a
+    Ok(a)
 }
 
-fn extract_operand(pair: Pair<Rule>) -> Expression {
+fn extract_operand(pair: Pair<Rule>) -> ParseResult<Expression> {
     assert_eq!(pair.as_rule(), Rule::Operand);
     let a = pair.into_inner().next().unwrap();
     match a.as_rule() {
-        Rule::Literal => Expression::Lit(extract_literal(a)),
-        Rule::Identifier => Expression::Binding(extract_identifier(a)),
+        Rule::Literal => Ok(Expression::Lit(extract_literal(a)?)),
+        Rule::Identifier => Ok(Expression::Binding(extract_identifier(a))),
         Rule::Relation => extract_relation(a),
         _ => unreachable!(),
     }
 }
 
-fn extract_method_call(pair: Pair<Rule>) -> (Identifier, Vec<Expression>) {
+fn extract_method_call(pair: Pair<Rule>) -> ParseResult<(Identifier, Vec<Expression>)> {
     assert_eq!(pair.as_rule(), Rule::MethodCall);
     let mut pairs = pair.into_inner();
-    (
+    Ok((
         extract_identifier(pairs.next().unwrap()),
-        extract_args(pairs.next().unwrap()),
-    )
+        extract_args(pairs.next().unwrap())?,
+    ))
 }
 
 fn extract_member_ref(pair: Pair<Rule>) -> Identifier {
@@ -193,23 +229,23 @@ fn extract_identifier(pair: Pair<Rule>) -> Identifier {
     pair.as_str().parse().expect("parse identifier")
 }
 
-fn extract_args(pair: Pair<Rule>) -> Vec<Expression> {
+fn extract_args(pair: Pair<Rule>) -> ParseResult<Vec<Expression>> {
     assert_eq!(pair.as_rule(), Rule::Args);
     pair.into_inner().map(extract_relation).collect()
 }
 
-fn extract_literal(pair: Pair<Rule>) -> Literal {
+fn extract_literal(pair: Pair<Rule>) -> ParseResult<Literal> {
     assert_eq!(pair.as_rule(), Rule::Literal);
     let pair = pair.into_inner().next().unwrap();
     match pair.as_rule() {
-        Rule::StringLiteral => Literal::String(extract_string(pair)),
-        Rule::BytesLiteral => Literal::Bytes(extract_bytes(pair)),
-        Rule::FloatLiteral => Literal::F64(pair.as_str().replace("_", "").parse().unwrap()),
-        Rule::IntLiteral => Literal::I64(pair.as_str().replace("_", "").parse().unwrap()),
+        Rule::StringLiteral => Ok(Literal::String(extract_string(pair))),
+        Rule::BytesLiteral => Ok(Literal::Bytes(extract_bytes(pair))),
+        Rule::FloatLiteral => Ok(Literal::F64(pair.as_str().replace("_", "").parse()?)),
+        Rule::IntLiteral => Ok(Literal::I64(pair.as_str().replace("_", "").parse()?)),
         Rule::ListLiteral => extract_list(pair),
         Rule::MapLiteral => extract_map(pair),
-        Rule::BoolLiteral => Literal::Bool(pair.as_str().parse().unwrap()),
-        Rule::NullLiteral => Literal::Null,
+        Rule::BoolLiteral => Ok(Literal::Bool(pair.as_str().parse().unwrap())),
+        Rule::NullLiteral => Ok(Literal::Null),
         _ => unreachable!(),
     }
 }
@@ -263,31 +299,31 @@ fn unescape_sequence(pair: &Pair<Rule>) -> Unescaped {
     }
 }
 
-fn extract_list(pair: Pair<Rule>) -> Literal {
+fn extract_list(pair: Pair<Rule>) -> ParseResult<Literal> {
     assert_eq!(pair.as_rule(), Rule::ListLiteral);
     let mut vs = Vec::new();
     for p in pair.into_inner() {
-        vs.push(extract_disjunction(p));
+        vs.push(extract_disjunction(p)?);
     }
-    Literal::List(vs)
+    Ok(Literal::List(vs))
 }
 
-fn extract_map(pair: Pair<Rule>) -> Literal {
+fn extract_map(pair: Pair<Rule>) -> ParseResult<Literal> {
     assert_eq!(pair.as_rule(), Rule::MapLiteral);
     let mut fields = Vec::new();
     for p in pair.into_inner() {
-        fields.push(extract_map_field(p));
+        fields.push(extract_map_field(p)?);
     }
-    Literal::Map(fields)
+    Ok(Literal::Map(fields))
 }
 
-fn extract_map_field(pair: Pair<Rule>) -> (Expression, Expression) {
+fn extract_map_field(pair: Pair<Rule>) -> ParseResult<(Expression, Expression)> {
     assert_eq!(pair.as_rule(), Rule::MapField);
     let mut pairs = pair.into_inner();
-    (
-        extract_disjunction(pairs.next().unwrap()),
-        extract_disjunction(pairs.next().unwrap()),
-    )
+    Ok((
+        extract_disjunction(pairs.next().unwrap())?,
+        extract_disjunction(pairs.next().unwrap())?,
+    ))
 }
 
 #[cfg(test)]
@@ -332,6 +368,14 @@ mod test {
     }
 
     #[test]
+    fn float_literal_overflow() {
+        assert_eq!(
+            parse("9999999999999999999999999.0"),
+            Ok(Expression::Lit(Literal::F64(1e25))),
+        );
+    }
+
+    #[test]
     fn null_literal() {
         assert_valid("null");
     }
@@ -344,9 +388,11 @@ mod test {
     }
 
     #[test]
-    #[should_panic] // TODO: return an error instead of panicking
     fn int_literal_overflow() {
-        let _ = parse("9999999999999999999999999");
+        assert_eq!(
+            parse("9999999999999999999999999"),
+            Err(ParseError::IllegalInt("number too large to fit in target type".to_owned()))
+        );
     }
 
     #[test]

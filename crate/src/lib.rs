@@ -14,7 +14,7 @@ pub mod parser;
 pub fn parse_to_ast(input: String) -> JsValue {
     match parser::parse(&input) {
         Ok(parsed) => JsValue::from_serde(&parsed).expect("serialize"),
-        Err(err) => JsValue::from_str(&err),
+        Err(err) => JsValue::from_str(&format!("{:?}", err)),
     }
 }
 
@@ -23,7 +23,7 @@ pub fn parse_to_ast(input: String) -> JsValue {
 pub fn process(input: String) -> JsValue {
     let ast = match parser::parse(&input) {
         Ok(parsed) => parsed,
-        Err(err) => return JsValue::from_str(&err),
+        Err(err) => return JsValue::from_str(&format!("{:?}", err)),
     };
 
     JsValue::from_serde(&explore(&EvalContext::default(), ast)).expect("serialize")
