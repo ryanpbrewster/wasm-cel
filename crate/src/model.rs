@@ -114,6 +114,20 @@ impl Value {
             Value::Null => Kind::Null,
         }
     }
+
+    pub fn size(&self) -> usize {
+        let transitive = match self {
+            Value::I64(_) => 0,
+            Value::F64(_) => 0,
+            Value::Bool(_) => 0,
+            Value::String(s) => s.len(),
+            Value::Bytes(b) => b.len(),
+            Value::Null => 0,
+            Value::List(children) => children.iter().map(|v| v.size()).sum(),
+            Value::Map(children) => children.iter().map(|(k, v)| k.len() + v.size()).sum(),
+        };
+        std::mem::size_of_val(self) + transitive
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
@@ -153,6 +167,7 @@ pub enum Error {
     NoSuchMember(Identifier),
     InvalidMapKey(Kind),
     DuplicateMapKey(String),
+    EvaluationTooLarge,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize)]
@@ -171,3 +186,44 @@ impl FromStr for Identifier {
 }
 
 pub type EvalResult = Result<Value, Error>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn sizeof_primitive() {
+        assert_eq!(Value::Null.size(), 64);
+        assert_eq!(Value::Bool(true).size(), 64);
+        assert_eq!(Value::I64(42).size(), 64);
+        assert_eq!(Value::F64(2.78).size(), 64);
+    }
+
+    #[test]
+    fn sizeof_string() {
+        let v = Value::String("asdf".to_owned());
+        assert_eq!(v.size(), 64 + 4);
+    }
+
+    #[test]
+    fn sizeof_bytes() {
+        let v = Value::Bytes("asdf".as_bytes().to_owned());
+        assert_eq!(v.size(), 64 + 4);
+    }
+
+    #[test]
+    fn sizeof_list() {
+        let v = Value::List(vec![
+            Value::String("asdf".to_owned()),
+            Value::Null,
+            Value::List(vec![]),
+        ]);
+        assert_eq!(v.size(), 4 * 64 + 4);
+    }
+
+    #[test]
+    fn sizeof_map() {
+        let v = Value::Map(vec![("a".to_owned(), Value::Null)].into_iter().collect());
+        assert_eq!(v.size(), 2 * 64 + 1);
+    }
+}

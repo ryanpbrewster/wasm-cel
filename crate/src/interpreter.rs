@@ -3,22 +3,34 @@ use std::collections::HashMap;
 use crate::methods;
 use crate::model::{Error, EvalResult, Expression, Identifier, Literal, Op, Value};
 use std::cmp::Ordering;
+use std::rc::Rc;
+use std::sync::Mutex;
 
 #[derive(Default, Clone)]
 pub struct EvalContext<'a> {
     parent: Option<&'a EvalContext<'a>>,
     pub binding: Option<(Identifier, EvalResult)>,
+    bytes_processed: Rc<Mutex<usize>>,
 }
 
+const BYTES_PROCESSED_LIMIT: usize = 1 << 20;
 impl<'a> EvalContext<'a> {
     pub fn with_binding(&self, name: Identifier, result: EvalResult) -> EvalContext {
         EvalContext {
             parent: Some(self),
             binding: Some((name, result)),
+            bytes_processed: self.bytes_processed.clone(),
         }
     }
+    fn check_limits(&self) -> Result<(), Error> {
+        if *self.bytes_processed.lock().unwrap() > BYTES_PROCESSED_LIMIT {
+            return Err(Error::EvaluationTooLarge);
+        }
+        Ok(())
+    }
     pub fn evaluate(&'a self, expr: Expression) -> EvalResult {
-        match expr {
+        self.check_limits()?;
+        let result = match expr {
             Expression::LetBinding { id, value, body } => {
                 let value = self.evaluate(*value);
                 self.with_binding(id, value).evaluate(*body)
@@ -208,7 +220,12 @@ impl<'a> EvalContext<'a> {
                     .collect::<Result<Vec<_>, _>>()?;
                 methods::evaluate_method(name, e, args)
             }
+        };
+
+        if let Ok(ref value) = result {
+            *self.bytes_processed.lock().unwrap() += value.size();
         }
+        result
     }
 
     fn evaluate_literal(&self, lit: Literal) -> EvalResult {
@@ -625,5 +642,23 @@ mod test {
     fn ternary_operator_map_value() {
         let input = r#" { "a": true ? "foo" : "bar"  } "#;
         assert_eq!(evaluate(input), evaluate(r#" { "a": "foo" } "#));
+    }
+
+    #[test]
+    fn value_size_explosion() {
+        // 16 ** 8 == 2 ** 32 values, should _definitely_ overflow
+        let input = r#"
+        let x = [0];
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        let x = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x;
+        x
+        "#;
+        assert_eq!(evaluate(input), Err(Error::EvaluationTooLarge));
     }
 }
