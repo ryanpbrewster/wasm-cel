@@ -33,6 +33,15 @@ fn explore(ctx: &EvalContext, expr: Expression) -> EvaluatedAst {
     let value = ctx.evaluate(expr.clone());
     let op = expr.op();
     let children = match expr {
+        Expression::Ternary {
+            condition,
+            true_branch,
+            else_branch,
+        } => vec![
+            explore(ctx, *condition),
+            explore(ctx, *true_branch),
+            explore(ctx, *else_branch),
+        ],
         Expression::LetBinding { id, value, body } => {
             let value = ctx.evaluate(*value);
             let child_ctx = ctx.with_binding(id, value);

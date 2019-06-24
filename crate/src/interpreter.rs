@@ -23,6 +23,14 @@ impl<'a> EvalContext<'a> {
                 let value = self.evaluate(*value);
                 self.with_binding(id, value).evaluate(*body)
             }
+            Expression::Ternary {
+                condition,
+                true_branch,
+                else_branch,
+            } => match self.evaluate(*condition) {
+                Ok(Value::Bool(true)) => self.evaluate(*true_branch),
+                _ => self.evaluate(*else_branch),
+            },
             Expression::Lit(lit) => self.evaluate_literal(lit),
             Expression::Neg(e) => match self.evaluate(*e)? {
                 Value::I64(x) => Ok(Value::I64(-x)),
@@ -585,5 +593,37 @@ mod test {
     fn let_rebinding() {
         let input = r#" let x = 42; let x = x + x; x "#;
         assert_eq!(evaluate(input), Ok(Value::I64(42 + 42)));
+    }
+
+    #[test]
+    fn ternary_smoke() {
+        let input = r#" true ? 1 : 2 "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(1)));
+    }
+
+    #[test]
+    fn ternary_chain() {
+        let input = r#"
+            let x = "c";
+            x == "a" ? 0 :
+            x == "b" ? 1 :
+            x == "c" ? 2 :
+            x == "d" ? 3 :
+            x == "e" ? 4 :
+                       5
+        "#;
+        assert_eq!(evaluate(input), Ok(Value::I64(2)));
+    }
+
+    #[test]
+    fn ternary_operator_map_key() {
+        let input = r#" { true ? "a" : "b" : "foo"  } "#;
+        assert_eq!(evaluate(input), evaluate(r#" { "a": "foo" } "#));
+    }
+
+    #[test]
+    fn ternary_operator_map_value() {
+        let input = r#" { "a": true ? "foo" : "bar"  } "#;
+        assert_eq!(evaluate(input), evaluate(r#" { "a": "foo" } "#));
     }
 }

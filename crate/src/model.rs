@@ -9,6 +9,11 @@ pub enum Expression {
         value: Box<Expression>,
         body: Box<Expression>,
     },
+    Ternary {
+        condition: Box<Expression>,
+        true_branch: Box<Expression>,
+        else_branch: Box<Expression>,
+    },
     Or(Vec<Expression>),
     And(Vec<Expression>),
     Eq(Box<Expression>, Box<Expression>),
@@ -33,6 +38,7 @@ pub enum Expression {
 impl Expression {
     pub fn op(&self) -> Op {
         match self {
+            Expression::Ternary { .. } => Op::Ternary,
             Expression::LetBinding { .. } => Op::LetBinding,
             Expression::Or(_) => Op::Or,
             Expression::And(_) => Op::And,
@@ -92,6 +98,7 @@ pub enum Op {
     Member(Identifier),
     Method(Identifier),
     LetBinding,
+    Ternary,
 }
 
 impl Value {

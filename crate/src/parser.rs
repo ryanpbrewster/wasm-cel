@@ -37,12 +37,12 @@ impl From<std::num::ParseFloatError> for ParseError {
 pub type ParseResult<T> = Result<T, ParseError>;
 
 pub fn parse(input: &str) -> ParseResult<Expression> {
-    let mut parsed = CelParser::parse(Rule::Expression, input)?;
-    extract_expression(parsed.next().unwrap())
+    let mut parsed = CelParser::parse(Rule::TopLevel, input)?;
+    extract_top_level(parsed.next().unwrap())
 }
 
-fn extract_expression(pair: Pair<Rule>) -> ParseResult<Expression> {
-    assert_eq!(pair.as_rule(), Rule::Expression);
+fn extract_top_level(pair: Pair<Rule>) -> ParseResult<Expression> {
+    assert_eq!(pair.as_rule(), Rule::TopLevel);
     let mut pairs = pair.into_inner();
 
     let mut bindings = vec![];
@@ -52,7 +52,7 @@ fn extract_expression(pair: Pair<Rule>) -> ParseResult<Expression> {
             Rule::LetBinding => {
                 bindings.push(extract_binding(p)?);
             }
-            _ => break extract_disjunction(p)?,
+            _ => break extract_expression(p)?,
         }
     };
 
@@ -69,8 +69,29 @@ fn extract_binding(pair: Pair<Rule>) -> ParseResult<(Identifier, Expression)> {
     assert_eq!(pair.as_rule(), Rule::LetBinding);
     let mut pairs = pair.into_inner();
     let id = extract_identifier(pairs.next().unwrap());
-    let value = extract_disjunction(pairs.next().unwrap())?;
+    let value = extract_expression(pairs.next().unwrap())?;
     Ok((id, value))
+}
+
+fn extract_expression(pair: Pair<Rule>) -> ParseResult<Expression> {
+    match pair.as_rule() {
+        Rule::Ternary => extract_ternary(pair),
+        Rule::Disjunction => extract_disjunction(pair),
+        _ => unreachable!(),
+    }
+}
+
+fn extract_ternary(pair: Pair<Rule>) -> ParseResult<Expression> {
+    assert_eq!(pair.as_rule(), Rule::Ternary);
+    let mut pairs = pair.into_inner();
+    let condition = extract_disjunction(pairs.next().unwrap())?;
+    let true_branch = extract_expression(pairs.next().unwrap())?;
+    let else_branch = extract_expression(pairs.next().unwrap())?;
+    Ok(Expression::Ternary {
+        condition: Box::new(condition),
+        true_branch: Box::new(true_branch),
+        else_branch: Box::new(else_branch),
+    })
 }
 
 fn extract_disjunction(pair: Pair<Rule>) -> ParseResult<Expression> {
@@ -205,8 +226,7 @@ fn extract_operand(pair: Pair<Rule>) -> ParseResult<Expression> {
     match a.as_rule() {
         Rule::Literal => Ok(Expression::Lit(extract_literal(a)?)),
         Rule::Identifier => Ok(Expression::Binding(extract_identifier(a))),
-        Rule::Relation => extract_relation(a),
-        _ => unreachable!(),
+        _ => extract_expression(a),
     }
 }
 
@@ -231,7 +251,7 @@ fn extract_identifier(pair: Pair<Rule>) -> Identifier {
 
 fn extract_args(pair: Pair<Rule>) -> ParseResult<Vec<Expression>> {
     assert_eq!(pair.as_rule(), Rule::Args);
-    pair.into_inner().map(extract_relation).collect()
+    pair.into_inner().map(extract_expression).collect()
 }
 
 fn extract_literal(pair: Pair<Rule>) -> ParseResult<Literal> {
@@ -303,7 +323,7 @@ fn extract_list(pair: Pair<Rule>) -> ParseResult<Literal> {
     assert_eq!(pair.as_rule(), Rule::ListLiteral);
     let mut vs = Vec::new();
     for p in pair.into_inner() {
-        vs.push(extract_disjunction(p)?);
+        vs.push(extract_expression(p)?);
     }
     Ok(Literal::List(vs))
 }
@@ -321,8 +341,8 @@ fn extract_map_field(pair: Pair<Rule>) -> ParseResult<(Expression, Expression)> 
     assert_eq!(pair.as_rule(), Rule::MapField);
     let mut pairs = pair.into_inner();
     Ok((
-        extract_disjunction(pairs.next().unwrap())?,
-        extract_disjunction(pairs.next().unwrap())?,
+        extract_expression(pairs.next().unwrap())?,
+        extract_expression(pairs.next().unwrap())?,
     ))
 }
 
@@ -391,7 +411,9 @@ mod test {
     fn int_literal_overflow() {
         assert_eq!(
             parse("9999999999999999999999999"),
-            Err(ParseError::IllegalInt("number too large to fit in target type".to_owned()))
+            Err(ParseError::IllegalInt(
+                "number too large to fit in target type".to_owned()
+            ))
         );
     }
 
@@ -558,5 +580,20 @@ mod test {
     #[test]
     fn let_rebinding() {
         assert_valid(r#" let x = 42; let x = x*x; x "#);
+    }
+
+    #[test]
+    fn ternary_operator() {
+        assert_valid(r#" true ? 1 : 2 "#);
+        assert_valid(r#" foo == bar || baz ? 1 : 2 "#);
+        assert_valid(r#" a ? b : c ? d : e "#); // chianing is fine
+        assert_valid(r#" a?b:c "#); // whitespace is optional
+        assert_valid(r#" ( foo ? true : bar ? true : true) "#); // inside parentheses
+    }
+
+    #[test]
+    fn ternary_operator_inside_map_literal() {
+        assert_valid(r#" { true ? "a" : "b" : "foo"  } "#); //  evaluates to { "a": "foo" }
+        assert_valid(r#" { "a" : true ? "foo" : bar } "#); //  evaluates to { "a": "foo" }
     }
 }
