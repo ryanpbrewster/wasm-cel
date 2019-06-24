@@ -7,6 +7,26 @@ use criterion::Criterion;
 use wasm_cel::interpreter;
 use wasm_cel::parser;
 
+fn benchmark_addition(c: &mut Criterion) {
+    let lots_of_ones = r#"
+    1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+      + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+    "#;
+    let lots_of_ones = parser::parse(lots_of_ones).unwrap();
+    c.bench_function("lots of ones", move |b| {
+        b.iter(|| black_box(interpreter::EvalContext::default().evaluate(lots_of_ones.clone())))
+    });
+}
+
 fn benchmark_bindings(c: &mut Criterion) {
     let deep_lookup = r#"
         let n00 = 0;
@@ -68,5 +88,5 @@ fn benchmark_bindings(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, benchmark_bindings);
+criterion_group!(benches, benchmark_addition, benchmark_bindings);
 criterion_main!(benches);
