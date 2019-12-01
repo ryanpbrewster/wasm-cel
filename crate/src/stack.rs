@@ -12,6 +12,8 @@ pub enum Operation {
     Mod,
     Neg,
     Not,
+    Or,
+    And,
 }
 
 pub mod walker;

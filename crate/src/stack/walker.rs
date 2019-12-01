@@ -16,8 +16,24 @@ impl Walker {
         match e {
             Expression::LetBinding { .. } => unimplemented!(),
             Expression::Ternary { .. } => unimplemented!(),
-            Expression::Or(_) => unimplemented!(),
-            Expression::And(_) => unimplemented!(),
+            Expression::Or(vs) => {
+                let n = vs.len();
+                for (i, v) in vs.into_iter().enumerate() {
+                    if i < n - 1 {
+                        self.0.push(Operation::Or);
+                    }
+                    self.walk(v);
+                }
+            }
+            Expression::And(vs) => {
+                let n = vs.len();
+                for (i, v) in vs.into_iter().enumerate() {
+                    if i < n - 1 {
+                        self.0.push(Operation::And);
+                    }
+                    self.walk(v);
+                }
+            }
             Expression::Eq(_, _) => unimplemented!(),
             Expression::Neq(_, _) => unimplemented!(),
             Expression::Lt(_, _) => unimplemented!(),
@@ -143,6 +159,36 @@ mod test {
             linearize(expr),
             vec![
                 Operation::MakeList(0),
+            ]
+        );
+    }
+
+    #[test]
+    fn linearize_or_simple() {
+        let expr = parse(r#" true || false "#).unwrap();
+        assert_eq!(
+            linearize(expr),
+            vec![
+                Operation::Or,
+                Operation::Lit(Value::Bool(true)),
+                Operation::Lit(Value::Bool(false)),
+            ]
+        );
+    }
+
+    #[test]
+    fn linearize_or_many() {
+        let expr = parse(r#" 0 || 1 || 2 || 3 "#).unwrap();
+        assert_eq!(
+            linearize(expr),
+            vec![
+                Operation::Or,
+                Operation::Lit(Value::I64(0)),
+                Operation::Or,
+                Operation::Lit(Value::I64(1)),
+                Operation::Or,
+                Operation::Lit(Value::I64(2)),
+                Operation::Lit(Value::I64(3)),
             ]
         );
     }
