@@ -8,6 +8,7 @@ mod methods;
 pub mod model;
 mod ordering;
 pub mod parser;
+pub mod stack;
 
 /// Parse `input` into an AST, then serialize it as JSON.
 #[wasm_bindgen]
